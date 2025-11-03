@@ -1,0 +1,23 @@
+<svg width="1440" height="1024" viewBox="0 0 1440 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .bg{fill:#0b0c10}
+    .panel{fill:#111217;stroke:#2a2f3a;stroke-width:2;rx:12}
+    .txt{fill:#c9cdd7;font-family:Inter, sans-serif}
+    .label{font-size:14px}
+    .step{fill:#1c1f2b}
+  </style>
+  <rect x="0" y="0" width="1440" height="1024" class="bg"/>
+  <rect x="0" y="0" width="240" height="1024" class="panel"/>
+  <rect x="256" y="24" width="1160" height="64" class="panel"/>
+  <rect x="256" y="104" width="1160" height="880" class="panel"/>
+
+  <rect x="276" y="120" width="1120" height="40" class="step"/>
+  <text x="288" y="146" class="txt label">Steps: Details → Schedule → Tickets → Review</text>
+
+  <text x="288" y="200" class="txt label">Details Form: Title, Description, Venue, Category</text>
+  <text x="288" y="240" class="txt label">Schedule: Start/End, Timezone</text>
+  <text x="288" y="280" class="txt label">Tickets: Type, Price, Quantity</text>
+  <text x="288" y="320" class="txt label">Review & Publish</text>
+</svg>
+
+

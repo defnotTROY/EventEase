@@ -1,0 +1,28 @@
+<svg width="1440" height="1024" viewBox="0 0 1440 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .bg{fill:#0b0c10}
+    .panel{fill:#111217;stroke:#2a2f3a;stroke-width:2;rx:12}
+    .muted{fill:#1c1f2b}
+    .txt{fill:#c9cdd7;font-family:Inter, sans-serif}
+    .title{fill:#f5f7ff;font-size:20px}
+    .label{font-size:14px}
+  </style>
+  <rect x="0" y="0" width="1440" height="1024" class="bg"/>
+  <rect x="0" y="0" width="240" height="1024" class="panel"/>
+  <text x="28" y="48" class="txt title">EventEase</text>
+
+  <rect x="256" y="24" width="1160" height="64" class="panel"/>
+  <rect x="256" y="104" width="560" height="160" class="panel"/>
+  <rect x="836" y="104" width="580" height="160" class="panel"/>
+  <rect x="256" y="280" width="1160" height="320" class="panel"/>
+  <rect x="256" y="616" width="560" height="320" class="panel"/>
+  <rect x="836" y="616" width="580" height="320" class="panel"/>
+
+  <text x="276" y="140" class="txt label">KPI Cards</text>
+  <text x="856" y="140" class="txt label">Recent Events</text>
+  <text x="276" y="308" class="txt label">Traffic / Engagement Chart</text>
+  <text x="276" y="644" class="txt label">Tasks</text>
+  <text x="856" y="644" class="txt label">Notifications</text>
+</svg>
+
+

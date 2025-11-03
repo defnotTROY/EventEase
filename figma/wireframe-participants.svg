@@ -1,0 +1,21 @@
+<svg width="1440" height="1024" viewBox="0 0 1440 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .bg{fill:#0b0c10}
+    .panel{fill:#111217;stroke:#2a2f3a;stroke-width:2;rx:12}
+    .txt{fill:#c9cdd7;font-family:Inter, sans-serif}
+    .label{font-size:14px}
+    .header{fill:#1c1f2b}
+    .cta{fill:#3b82f6}
+  </style>
+  <rect x="0" y="0" width="1440" height="1024" class="bg"/>
+  <rect x="0" y="0" width="240" height="1024" class="panel"/>
+  <rect x="256" y="24" width="1160" height="64" class="panel"/>
+  <rect x="256" y="104" width="1160" height="880" class="panel"/>
+  <rect x="276" y="128" width="1120" height="48" class="header"/>
+  <text x="288" y="158" class="txt label">Search | Filters | Add | Import CSV</text>
+  <text x="288" y="210" class="txt label">Table: Name, Email, Ticket, RSVP, Check-in, Actions</text>
+  <rect x="276" y="860" width="160" height="40" class="cta"/>
+  <text x="356" y="886" text-anchor="middle" class="txt label">Add Participant</text>
+</svg>
+
+

@@ -1,0 +1,21 @@
+<svg width="1440" height="1024" viewBox="0 0 1440 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .bg{fill:#0b0c10}
+    .panel{fill:#111217;stroke:#2a2f3a;stroke-width:2;rx:12}
+    .txt{fill:#c9cdd7;font-family:Inter, sans-serif}
+    .label{font-size:14px}
+    .muted{fill:#1c1f2b}
+  </style>
+  <rect x="0" y="0" width="1440" height="1024" class="bg"/>
+  <rect x="0" y="0" width="240" height="1024" class="panel"/>
+  <rect x="256" y="24" width="1160" height="64" class="panel"/>
+  <rect x="256" y="104" width="1160" height="880" class="panel"/>
+  <rect x="276" y="128" width="220" height="840" class="muted"/>
+  <text x="296" y="160" class="txt label">Profile</text>
+  <text x="296" y="190" class="txt label">Organization</text>
+  <text x="296" y="220" class="txt label">Billing</text>
+  <text x="296" y="250" class="txt label">Preferences</text>
+  <text x="520" y="160" class="txt label">Right panel: forms for selected tab</text>
+</svg>
+
+

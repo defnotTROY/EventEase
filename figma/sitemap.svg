@@ -1,0 +1,58 @@
+<svg width="1200" height="800" viewBox="0 0 1200 800" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .node{fill:#111217;stroke:#2a2f3a;stroke-width:2;rx:10;}
+    .label{fill:#f5f7ff;font-family:Inter, sans-serif;font-size:16px}
+    .sub{fill:#c9cdd7;font-size:14px}
+    .line{stroke:#3b82f6;stroke-width:2}
+  </style>
+  <rect x="520" y="40" width="160" height="48" class="node"/>
+  <text x="600" y="70" text-anchor="middle" class="label">EventEase</text>
+
+  <rect x="120" y="140" width="180" height="44" class="node"/>
+  <text x="210" y="168" text-anchor="middle" class="label">Dashboard</text>
+
+  <rect x="380" y="140" width="180" height="44" class="node"/>
+  <text x="470" y="168" text-anchor="middle" class="label">Events</text>
+
+  <rect x="640" y="140" width="180" height="44" class="node"/>
+  <text x="730" y="168" text-anchor="middle" class="label">Participants</text>
+
+  <rect x="900" y="140" width="180" height="44" class="node"/>
+  <text x="990" y="168" text-anchor="middle" class="label">Analytics</text>
+
+  <rect x="520" y="260" width="180" height="44" class="node"/>
+  <text x="610" y="288" text-anchor="middle" class="label">Settings</text>
+
+  <line x1="600" y1="88" x2="210" y2="140" class="line"/>
+  <line x1="600" y1="88" x2="470" y2="140" class="line"/>
+  <line x1="600" y1="88" x2="730" y2="140" class="line"/>
+  <line x1="600" y1="88" x2="990" y2="140" class="line"/>
+  <line x1="600" y1="88" x2="610" y2="260" class="line"/>
+
+  <rect x="360" y="220" width="140" height="38" class="node"/>
+  <text x="430" y="246" text-anchor="middle" class="sub">Event List</text>
+  <rect x="360" y="270" width="140" height="38" class="node"/>
+  <text x="430" y="296" text-anchor="middle" class="sub">Event Details</text>
+  <rect x="360" y="320" width="140" height="38" class="node"/>
+  <text x="430" y="346" text-anchor="middle" class="sub">New Event</text>
+
+  <line x1="470" y1="184" x2="430" y2="220" class="line"/>
+  <line x1="470" y1="184" x2="430" y2="270" class="line"/>
+  <line x1="470" y1="184" x2="430" y2="320" class="line"/>
+
+  <rect x="900" y="220" width="160" height="38" class="node"/>
+  <text x="980" y="246" text-anchor="middle" class="sub">Overview</text>
+  <rect x="900" y="270" width="160" height="38" class="node"/>
+  <text x="980" y="296" text-anchor="middle" class="sub">Filters & Reports</text>
+
+  <rect x="120" y="220" width="160" height="38" class="node"/>
+  <text x="200" y="246" text-anchor="middle" class="sub">KPIs & Cards</text>
+
+  <rect x="640" y="220" width="200" height="38" class="node"/>
+  <text x="740" y="246" text-anchor="middle" class="sub">List / Import / Details</text>
+
+  <rect x="520" y="320" width="200" height="38" class="node"/>
+  <text x="620" y="346" text-anchor="middle" class="sub">Profile / Org / Billing</text>
+</svg>
+
+

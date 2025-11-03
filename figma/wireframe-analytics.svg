@@ -1,0 +1,20 @@
+<svg width="1440" height="1024" viewBox="0 0 1440 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .bg{fill:#0b0c10}
+    .panel{fill:#111217;stroke:#2a2f3a;stroke-width:2;rx:12}
+    .txt{fill:#c9cdd7;font-family:Inter, sans-serif}
+    .label{font-size:14px}
+    .header{fill:#1c1f2b}
+  </style>
+  <rect x="0" y="0" width="1440" height="1024" class="bg"/>
+  <rect x="0" y="0" width="240" height="1024" class="panel"/>
+  <rect x="256" y="24" width="1160" height="64" class="panel"/>
+  <rect x="256" y="104" width="1160" height="880" class="panel"/>
+  <rect x="276" y="128" width="1120" height="48" class="header"/>
+  <text x="288" y="158" class="txt label">Date Range | Event | Segment Filters | Export</text>
+  <text x="288" y="220" class="txt label">KPI Row: Revenue, Tickets Sold, Check-ins, NPS</text>
+  <text x="288" y="260" class="txt label">Charts: Sales Over Time, Attendance, Channels</text>
+  <text x="288" y="300" class="txt label">Table: Top Events / Sources</text>
+</svg>
+
+

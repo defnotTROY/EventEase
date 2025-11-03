@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta viewport="width=device-width, initial-scale=1.0">
+    <title>Group 5 - Real-World Data Analytics Applications</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .slide {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            margin-bottom: 30px;
+            padding: 40px;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: slideUp 0.8s ease forwards;
+        }
+        
+        @keyframes slideUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .title-slide {
+            text-align: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            animation-delay: 0.2s;
+        }
+        
+        h1 {
+            font-size: 3.2em;
+            margin-bottom: 20px;
+            font-weight: 300;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        h2 {
+            font-size: 2.2em;
+            color: #4a5568;
+            margin-bottom: 25px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .title-slide h2 {
+            color: rgba(255,255,255,0.95);
+            border-bottom: 3px solid rgba(255,255,255,0.4);
+            font-size: 1.8em;
+        }
+        
+        .group-info {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 30px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .scenario-chart {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            border-radius: 15px;
+            padding: 30px;
+            margin: 25px 0;
+            border-left: 6px solid #667eea;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+        
+        .scenario-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .scenario-icon {
+            font-size: 2.5em;
+            margin-right: 15px;
+            background: #667eea;
+            color: white;
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .scenario-title {
+            font-size: 1.8em;
+            color: #2d3748;
+            font-weight: 600;
+        }
+        
+        .flow-process {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 25px 0;
+        }
+        
+        .process-step {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            position: relative;
+            border-top: 4px solid #667eea;
+            transition: transform 0.3s ease;
+        }
+        
+        .process-step:hover {
+            transform: translateY(-5px);
+        }
+        
+        .step-number {
+            background: #667eea;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin: 0 auto 10px auto;
+        }
+        
+        .step-title {
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 8px;
+        }
+        
+        .step-description {
+            font-size: 0.9em;
+            color: #4a5568;
+        }
+        
+        .real-world-example {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 12px;
+            margin: 20px 0;
+        }
+        
+        .example-company {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .data-flow {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 20px 0;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .data-node {
+            background: #4299e1;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 25px;
+            text-align: center;
+            min-width: 120px;
+            position: relative;
+            font-size: 0.9em;
+        }
+        
+        .data-node::after {
+            content: '→';
+            position: absolute;
+            right: -25px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1.5em;
+            color: #4299e1;
+        }
+        
+        .data-node:last-child::after {
+            display: none;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 25px 0;
+        }
+        
+        .metric-card {
+            background: #e2e8f0;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .metric-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .metric-label {
+            font-size: 0.85em;
+            color: #4a5568;
+            margin-top: 5px;
+        }
+        
+        .industry-comparison {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        .industry-scenario {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            border-top: 4px solid #667eea;
+        }
+        
+        .industry-scenario:nth-child(2) { border-top-color: #4299e1; }
+        .industry-scenario:nth-child(3) { border-top-color: #48bb78; }
+        .industry-scenario:nth-child(4) { border-top-color: #ed8936; }
+        
+        .scenario-problem {
+            background: #fed7d7;
+            border-left: 4px solid #e53e3e;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        
+        .scenario-solution {
+            background: #c6f6d5;
+            border-left: 4px solid #38a169;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        
+        .scenario-outcome {
+            background: #bee3f8;
+            border-left: 4px solid #3182ce;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        
+        @media (max-width: 768px) {
+            .container { padding: 10px; }
+            .slide { padding: 25px; }
+            h1 { font-size: 2.5em; }
+            h2 { font-size: 1.8em; }
+            .data-flow { flex-direction: column; }
+            .data-node::after {
+                content: '↓';
+                right: 50%;
+                transform: translateX(50%);
+                top: calc(100% + 5px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Title Slide -->
+        <div class="slide title-slide">
+            <h1>Real-World Applications</h1>
+            <h2>Data Analytics Scenario Charts Across Industries</h2>
+            <div class="group-info">
+                <p><strong>Research Focus:</strong> At least two industries (Healthcare, Finance, E-commerce, Education)</p>
+                <p><strong>Output:</strong> Scenario charts showing how data analytics is applied in each industry</p>
+                <p><strong>Approach:</strong> General applications without deep technical details</p>
+                <p><strong>Presentation Time:</strong> 8 minutes</p>
+            </div>
+        </div>
+
+        <!-- Healthcare Scenarios -->
+        <div class="slide">
+            <h2>Healthcare: Real-World Data Analytics Scenarios</h2>
+            
+            <div class="scenario-chart">
+                <div class="scenario-header">
+                    <div class="scenario-icon">🏥</div>
+                    <div class="scenario-title">Fraud Detection in Healthcare Claims</div>
+                </div>
+                
+                <div class="scenario-problem">
+                    <strong>Problem:</strong> Healthcare fraud costs the US $100+ billion annually. Manual claim reviews are slow and miss complex fraud patterns.
+                </div>
+                
+                <div class="flow-process">
+                    <div class="process-step">
+                        <div class="step-number">1</div>
+                        <div class="step-title">Data Collection</div>
+                        <div class="step-description">Claims, provider data, patient history</div>
+                    </div>
+                    <div class="process-step">
+                        <div class="step-number">2</div>
+                        <div class="step-title">Pattern Analysis</div>
+                        <div class="step-description">ML algorithms detect anomalies</div>
+                    </div>
+                    <div class="process-step">
+                        <div class="step-number">3</div>
+                        <div class="step-title">Risk Scoring</div>
+                        <div class="step-description">Claims ranked by fraud probability</div>
+                    </div>
+                    <div class="process-step">
+                        <div class="step-number">4</div>
+                        <div class="step-title">Investigation</div>
+                        <div class="step-description">High-risk claims flagged for review</div>
+                    </div>
+                </div>
+                
+                <div class="scenario-outcome">
+                    <strong>Outcome:</strong> Advanced analytics solutions detect, prevent, and reduce fraudulent activities in healthcare claims, safeguarding financial resources and enhancing transaction integrity.
+                </div>
+            </div>
+
+            <div class="scenario-chart">
+                <div class="scenario-header">
+                    <div class="scenario-icon">📊</div>
+                    <div class="scenario-title">Predictive Patient Care Analytics</div>
+                </div>
+                
+                <div class="data-flow">
+                    <div class="data-node">Patient Records</div>
+                    <div class="data-node">Vital Signs</div>
+                    <div class="data-node">Lab Results</div>
+                    <div class="data-node">Risk Prediction</div>
+                    <div class="data-node">Intervention</div>
+                </div>
+                
+                <div class="real-world-example">
+                    <div class="example-company">Real Impact:</div>
+                    The global healthcare analytics market is projected to reach $293.42 billion by 2034, growing at 19.1% CAGR from 2024, driven by applications in chronic disease management and real-time patient monitoring.
+                </div>
+            </div>
+        </div>
+
+        <!-- Finance Scenarios -->
+        <div class="slide">
+            <h2>Finance: Real-World Data Analytics Scenarios</h2>
+            
+            <div class="scenario-chart">
+                <div class="scenario-header">
+                    <div class="scenario-icon">💳</div>
+                    <div class="scenario-title">Real-Time Fraud Detection System</div>
+                </div>
+                
+                <div class="scenario-problem">
+                    <strong>Problem:</strong> Credit card fraud losses exceed $28 billion annually. Traditional rule-based systems have high false positive rates.
+                </div>
+                
+                <div class="flow-process">
+                    <div class="process-step">
+                        <div class="step-number">1</div>
+                        <div class="step-title">Transaction Capture</div>
+                        <div class="step-description">Real-time transaction monitoring</div>
+                    </div>
+                    <div class="process-step">
+                        <div class="step-number">2</div>
+                        <div class="step-title">Behavior Analysis</div>
+                        <div class="step-description">Compare to user patterns</div>
+                    </div>
+                    <div class="process-step">
+                        <div class="step-number">3</div>
+                        <div class="step-title">Risk Assessment</div>
+                        <div class="step-description">ML models score transactions</div>
+                    </div>
+                    <div class="process-step">
+                        <div class="step-number">4</div>
+                        <div class="step-title">Decision & Action</div>
+                        <div class="step-description">Approve, decline, or verify</div>
+                    </div>
+                </div>
+                
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value">&lt;100ms</div>
+                        <div class="metric-label">Response Time</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">99.9%</div>
+                        <div class="metric-label">Accuracy Rate</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">70%</div>
+                        <div class="metric-label">Fraud Reduction</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="scenario-chart">
+                <div class="scenario-header">
+                    <div class="scenario-icon">📈</div>
+                    <div class="scenario-title">Algorithmic Trading Analytics</div>
+                </div>
+                
+                <div class="data-flow">
+                    <div class="data-node">Market Data</div>
+                    <div class="data-node">News Analysis</div>
+                    <div class="data-node">Pattern Recognition</div>
+                    <div class="data-node">Trade Execution</div>
+                    <div class="data-node">Portfolio Optimization</div>
+                </div>
+                
+                <div class="scenario-solution">
+                    <strong>Solution:</strong> High-frequency trading algorithms process thousands of data points per second to identify profitable opportunities and execute trades automatically.
+                </div>
+            </div>
+        </div>
+
+        <!-- E-commerce Scenarios -->
+        <div class="slide">
+            <h2>E-commerce: Real-World Data Analytics Scenarios</h2>
+            
+            <div class="scenario-chart">
+                <div class="scenario-header">
+                    <div class="scenario-icon">🛒</div>
+                    <div class="scenario-title">Amazon's Recommendation Engine</div>
+                </div>
+                
+                <div class="scenario-problem">
+                    <strong>Challenge:</strong> With millions of products, customers need personalized guidance to find relevant items quickly.
+                </div>
+                
+                <div class="flow-process">
+                    <div class="process-step">
+                        <div class="step-number">1</div>
+                        <div class="step-title">User Behavior Tracking</div>
+                        <div class="step-description">Clicks, views, purchases, searches</div>
+                    </div>
+                    <div class="process-step">
+                        <div class="step-number">2</div>
+                        <div class="step-title">Collaborative Filtering</div>
+                        <div class="step-description">Find similar user preferences</div>
+                    </div>
+                    <div class="process-step">
+                        <div class="step-number">3</div>
+                        <div class="step-title">Product Matching</div>
+                        <div class="step-description">Content-based recommendations</div>
+                    </div>
+                    <div class="process-step">
+                        <div class="step-number">4</div>
+                        <div class="step-title">Real-time Display</div>
+                        <div class="step-description">Personalized product suggestions</div>
+                    </div>
+                </div>
+                
+                <div class="real-world-example">
+                    <div class="example-company">Amazon's Success:</div>
+                    Amazon analyzes products based on past searches on its platform. Using predictive analytics, Amazon accurately predicts what you're likely to purchase next, driving 35% of their total sales through recommendations.
+                </div>
+            </div>
+
+            <div class="scenario-chart">
+                <div class="scenario-header">
+                    <div class="scenario-icon">📦</div>
+                    <div class="scenario-title">Inventory Optimization Scenario</div>
+                </div>
+                
+                <div class="data-flow">
+                    <div class="data-node">Sales History</div>
+                    <div class="data-node">Seasonal Trends</div>
+                    <div class="data-node">Demand Forecasting</div>
+                    <div class="data-node">Stock Optimization</div>
+                    <div class="data-node">Automated Ordering</div>
+                </div>
+                
+                <div class="scenario-outcome">
+                    <strong>Result:</strong> Online grocery stores use sales data analysis to predict demand - for example, analyzing milk sales data helps predict milk units needed for the upcoming week, avoiding stockouts and overstocking.
+                </div>
+            </div>
+        </div>
+
+        <!-- Education Scenarios -->
+        <div class="slide">
+            <h2>Education: Real-World Data Analytics Scenarios</h2>
+            
+            <div class="scenario-chart">
+                <div class="scenario-header">
+                    <div class="scenario-icon">🎓</div>
+                    <div class="scenario-title">Student Success Prediction System</div>
+                </div>
+                
+                <div class="scenario-problem">
+                    <strong>Problem:</strong> Universities struggle to identify at-risk students early enough to provide effective interventions.
+                </div>
+                
+                <div class="flow-process">
+                    <div class="process-step">
+                        <div class="step-number">1</div>
+                        <div class="step-title">Data Integration</div>
+                        <div class="step-description">Grades, attendance, engagement metrics</div>
+                    </div>
+                    <div class="process-step">
+                        <div class="step-number">2</div>
+                        <div class="step-title">Risk Modeling</div>
+                        <div class="step-description">ML identifies at-risk patterns</div>
+                    </div>
+                    <div class="process-step">
+                        <div class="step-number">3</div>
+                        <div class="step-title">Early Warning System</div>
+                        <div class="step-description">Alerts counselors and advisors</div>
+                    </div>
+                    <div class="process-step">
+                        <div class="step-number">4</div>
+                        <div class="step-title">Targeted Interventions</div>
+                        <div class="step-description">Personalized support programs</div>
+                    </div>
+                </div>
+                
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value">25%</div>
+                        <div class="metric-label">Retention Improvement</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">87%</div>
+                        <div class="metric-label">Prediction Accuracy</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">40%</div>
+                        <div class="metric-label">Early Intervention Rate</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="scenario-chart">
+                <div class="scenario-header">
+                    <div class="scenario-icon">📚</div>
+                    <div class="scenario-title">Adaptive Learning Platform</div>
+                </div>
+                
+                <div class="data-flow">
+                    <div class="data-node">Learning Activity</div>
+                    <div class="data-node">Performance Analysis</div>
+                    <div class="data-node">Knowledge Gap ID</div>
+                    <div class="data-node">Content Adaptation</div>
+                    <div class="data-node">Personalized Path</div>
+                </div>
+                
+                <div class="scenario-solution">
+                    <strong>Solution:</strong> AI-powered systems analyze student responses in real-time, adjusting difficulty levels, providing additional practice for weak areas, and accelerating through mastered concepts.
+                </div>
+            </div>
+        </div>
+
+        <!-- Industry Comparison -->
+        <div class="slide">
+            <h2>Cross-Industry Scenario Comparison</h2>
+            
+            <div class="industry-comparison">
+                <div class="industry-scenario">
+                    <h3 style="color: #667eea;">🏥 Healthcare</h3>
+                    <div class="scenario-problem">
+                        <strong>Primary Challenge:</strong> Patient safety & cost control
+                    </div>
+                    <div class="scenario-solution">
+                        <strong>Analytics Solution:</strong> Predictive models for early intervention
+                    </div>
+                    <div class="scenario-outcome">
+                        <strong>Real Impact:</strong> 70% of healthcare institutions use cloud computing for real-time data sharing
+                    </div>
+                </div>
+                
+                <div class="industry-scenario">
+                    <h3 style="color: #4299e1;">💰 Finance</h3>
+                    <div class="scenario-problem">
+                        <strong>Primary Challenge:</strong> Risk management & fraud prevention
+                    </div>
+                    <div class="scenario-solution">
+                        <strong>Analytics Solution:</strong> Real-time transaction monitoring
+                    </div>
+                    <div class="scenario-outcome">
+                        <strong>Real Impact:</strong> Sub-100ms fraud detection with 99%+ accuracy
+                    </div>
+                </div>
+                
+                <div class="industry-scenario">
+                    <h3 style="color: #48bb78;">🛒 E-commerce</h3>
+                    <div class="scenario-problem">
+                        <strong>Primary Challenge:</strong> Customer experience & conversion
+                    </div>
+                    <div class="scenario-solution">
+                        <strong>Analytics Solution:</strong> Personalization algorithms
+                    </div>
+                    <div class="scenario-outcome">
+                        <strong>Real Impact:</strong> Colgate-Palmolive optimized Amazon product strategy using data science to forecast e-commerce sales and predict profitability
+                    </div>
+                </div>
+                
+                <div class="industry-scenario">
+                    <h3 style="color: #ed8936;">🎓 Education</h3>
+                    <div class="scenario-problem">
+                        <strong>Primary Challenge:</strong> Student success & retention
+                    </div>
+                    <div class="scenario-solution">
+                        <strong>Analytics Solution:</strong> Predictive intervention systems
+                    </div>
+                    <div class="scenario-outcome">
+                        <strong>Real Impact:</strong> 25% improvement in student retention rates
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Conclusion -->
+        <div class="slide">
+            <h2>Key Insights from Real-World Applications</h2>
+            
+            <div class="scenario-chart">
+                <div class="scenario-header">
+                    <div class="scenario-icon">🎯</div>
+                    <div class="scenario-title">Universal Success Patterns</div>
+                </div>
+                
+                <div class="flow-process">
+                    <div class="process-step">
+                        <div class="step-number">1</div>
+                        <div class="step-title">Data Integration</div>
+                        <div class="step-description">All industries start with comprehensive data collection</div>
+                    </div>
+                    <div class="process-step">
+                        <div class="step-number">2</div>
+                        <div class="step-title">Pattern Recognition</div>
+                        <div class="step-description">ML and AI identify actionable insights</div>
+                    </div>
+                    <div class="process-step">
+                        <div class="step-number">3</div>
+                        <div class="step-title">Real-time Action</div>
+                        <div class="step-description">Automated or guided decision-making</div>
+                    </div>
+                    <div class="process-step">
+                        <div class="step-number">4</div>
+                        <div class="step-title">Continuous Learning</div>
+                        <div class="step-description">Systems improve through feedback loops</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="real-world-example">
+                <strong>The Future of Data Analytics:</strong> In the last 2 years, 90% of the world's data has been created and businesses are spending more than $180 billion a year on big data analysis, demonstrating the critical role of analytics across all industries.
+            </div>
+            
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 15px; text-align: center; margin-top: 30px;">
+                <h3 style="color: white; margin-bottom: 15px; font-size: 1.5em;">Data Analytics: From Theory to Transformational Impact</h3>
+                <p style="font-size: 1.1em;">These real-world scenarios demonstrate how data analytics has moved beyond theoretical applications to become the backbone of operational excellence across industries.</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
