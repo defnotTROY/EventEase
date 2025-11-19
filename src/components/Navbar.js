@@ -75,6 +75,17 @@ const Navbar = ({ onMenuClick }) => {
     }
   };
 
+  // Refresh notifications periodically (every 30 seconds) when user is logged in
+  useEffect(() => {
+    if (!user) return;
+
+    const interval = setInterval(() => {
+      loadNotifications(user.id);
+    }, 30000); // Refresh every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [user]);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {

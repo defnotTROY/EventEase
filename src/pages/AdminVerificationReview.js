@@ -295,9 +295,14 @@ const AdminVerificationReview = () => {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center space-x-3 mb-2">
-                        <h3 className="text-lg font-semibold text-gray-900">
-                          {verification.users?.email || 'Unknown User'}
-                        </h3>
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900">
+                            {verification.users?.name || verification.users?.email || verification.user_id?.substring(0, 8) || 'Unknown User'}
+                          </h3>
+                          {verification.users?.email && verification.users?.name && (
+                            <p className="text-sm text-gray-500">{verification.users.email}</p>
+                          )}
+                        </div>
                         <span className={`inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(verification.status)}`}>
                           {getStatusIcon(verification.status)}
                           <span className="ml-1 capitalize">{verification.status.replace('_', ' ')}</span>
@@ -403,6 +408,10 @@ const AdminVerificationReview = () => {
               <div className="bg-gray-50 rounded-lg p-4">
                 <h3 className="font-semibold text-gray-900 mb-3">User Information</h3>
                 <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-gray-500">Name</p>
+                    <p className="font-medium text-gray-900">{selectedVerification.users?.name || 'N/A'}</p>
+                  </div>
                   <div>
                     <p className="text-gray-500">Email</p>
                     <p className="font-medium text-gray-900">{selectedVerification.users?.email || 'N/A'}</p>

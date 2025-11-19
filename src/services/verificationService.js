@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { storageService } from './storageService';
 import { notificationService } from './notificationService';
+import { pushNotificationService } from './pushNotificationService';
 
 /**
  * Verification Service
@@ -86,6 +87,24 @@ class VerificationService {
         throw new Error('Invalid file type. Please upload PDF, image, or document file.');
       }
 
+      // Get current user info to store email and full name in metadata
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const userEmail = currentUser?.email || null;
+      
+      // Build full name from first_name and last_name, or use existing full_name
+      let userName = null;
+      if (currentUser?.user_metadata) {
+        const firstName = currentUser.user_metadata.first_name || '';
+        const lastName = currentUser.user_metadata.last_name || '';
+        if (firstName && lastName) {
+          userName = `${firstName} ${lastName}`;
+        } else if (currentUser.user_metadata.full_name) {
+          userName = currentUser.user_metadata.full_name;
+        } else if (firstName) {
+          userName = firstName;
+        }
+      }
+
       // Upload file to Supabase Storage
       const fileExt = file.name.split('.').pop();
       const fileName = `verifications/${userId}/${Date.now()}.${fileExt}`;
@@ -119,6 +138,8 @@ class VerificationService {
         status: existing ? 'under_review' : 'pending', // If resubmission, mark as under review
         metadata: {
           uploaded_at: new Date().toISOString(),
+          user_email: userEmail, // Store email in metadata
+          user_name: userName, // Store name in metadata
           ...verificationData.metadata
         }
       };
@@ -172,29 +193,33 @@ class VerificationService {
       
       let query = supabase
         .from('user_verifications')
-        .select(`
-          *,
-          users:user_id (
-            id,
-            email,
-            raw_user_meta_data
-          )
-        `)
+        .select('*')
         .in('status', status === 'all' ? ['pending', 'under_review'] : [status])
         .order('created_at', { ascending: false });
-
+      
+      // Apply limit and offset
       if (limit) {
         query = query.limit(limit);
       }
-
+      
       if (offset) {
         query = query.range(offset, offset + limit - 1);
       }
-
+      
       const { data, error } = await query;
 
       if (error) throw error;
-      return { data: data || [], error: null };
+      
+      // Enrich data with user info from metadata
+      const enrichedData = (data || []).map(verification => ({
+        ...verification,
+        users: {
+          email: verification.metadata?.user_email || null,
+          name: verification.metadata?.user_name || null
+        }
+      }));
+      
+      return { data: enrichedData, error: null };
     } catch (error) {
       console.error('Error fetching pending verifications:', error);
       return { data: [], error };
@@ -232,13 +257,18 @@ class VerificationService {
         .eq('id', verificationId);
 
       // Create notification for user
-      await notificationService.createSystemAlert(
+      const notificationResult = await notificationService.createSystemAlert(
         data.user_id,
         'Verification Approved',
         'Your profile verification has been approved! You can now register for events.',
-        '/settings?tab=profile',
+        '/settings?tab=verification',
         { verification_id: verificationId, alert_type: 'verification_approved' }
       );
+
+      if (notificationResult.error) {
+        console.error('Error creating notification:', notificationResult.error);
+        // Don't fail the whole operation if notification fails
+      }
 
       return { data, error: null };
     } catch (error) {
@@ -280,13 +310,18 @@ class VerificationService {
         .eq('id', verificationId);
 
       // Create notification for user
-      await notificationService.createSystemAlert(
+      const notificationResult = await notificationService.createSystemAlert(
         data.user_id,
         'Verification Rejected',
         `Your profile verification was rejected. Reason: ${reason}`,
-        '/settings?tab=profile',
+        '/settings?tab=verification',
         { verification_id: verificationId, alert_type: 'verification_rejected', rejection_reason: reason }
       );
+
+      if (notificationResult.error) {
+        console.error('Error creating notification:', notificationResult.error);
+        // Don't fail the whole operation if notification fails
+      }
 
       return { data, error: null };
     } catch (error) {
