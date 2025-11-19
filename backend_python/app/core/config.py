@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     RELOAD: bool = True
     
     # Database Configuration
-    DATABASE_URL: str = "postgresql://username:password@localhost:5432/eventease"
+    DATABASE_URL: Optional[str] = None  # Not needed when using Supabase
     MONGODB_URL: Optional[str] = None
     
     # JWT Configuration
@@ -46,6 +46,10 @@ class Settings(BaseSettings):
     
     # Redis Configuration
     REDIS_URL: str = "redis://localhost:6379/0"
+    
+    # Supabase Configuration
+    SUPABASE_URL: Optional[str] = None
+    SUPABASE_ANON_KEY: Optional[str] = None
     
     # CORS Configuration
     FRONTEND_URL: str = "http://localhost:3000"
@@ -88,9 +92,9 @@ class Settings(BaseSettings):
 # Create settings instance
 settings = Settings()
 
-# Database URL validation
-if not settings.DATABASE_URL and not settings.MONGODB_URL:
-    raise ValueError("Either DATABASE_URL or MONGODB_URL must be set")
+# Database URL validation (skip if using Supabase)
+if not settings.DATABASE_URL and not settings.MONGODB_URL and not settings.SUPABASE_URL:
+    raise ValueError("Either DATABASE_URL, MONGODB_URL, or SUPABASE_URL must be set")
 
 # Log configuration info
 print(f"🔧 Configuration loaded:")

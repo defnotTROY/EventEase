@@ -281,7 +281,8 @@ class AIService {
       if (participantsError) throw participantsError;
 
       // For now, we'll analyze based on attendance patterns and generate insights
-      const attendanceRate = participants?.filter(p => p.status === 'attended').length / (participants?.length || 1);
+      const attendedCount = participants?.filter(p => p.status === 'attended').length || 0;
+      const attendanceRate = attendedCount / (participants?.length || 1);
       const registrationRate = participants?.length / (event.max_participants || 1);
 
       const prompt = `
@@ -327,7 +328,19 @@ class AIService {
         { role: 'user', content: prompt }
       ]);
 
-      return JSON.parse(aiResponse);
+      const parsed = JSON.parse(aiResponse);
+
+      return {
+        ...parsed,
+        metrics: {
+          totalParticipants: participants?.length || 0,
+          attendedCount,
+          attendanceRate: Math.round(attendanceRate * 100),
+          registrationRate: event.max_participants > 0
+            ? Math.min(Math.round(registrationRate * 100), 100)
+            : Math.round(registrationRate * 100)
+        }
+      };
     } catch (error) {
       console.error('Error analyzing feedback:', error);
       throw error;

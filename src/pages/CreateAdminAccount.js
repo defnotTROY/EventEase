@@ -1,407 +1,131 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React from 'react';
+import { Link } from 'react-router-dom';
 import { 
-  User, 
-  Mail, 
-  Lock, 
   Shield, 
-  CheckCircle, 
-  XCircle, 
-  Loader2,
-  Eye,
-  EyeOff
+  AlertCircle,
+  FileText,
+  Key,
+  CheckCircle
 } from 'lucide-react';
-import { auth } from '../lib/supabase';
 
 const CreateAdminAccount = () => {
-  const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    confirmPassword: '',
-    firstName: '',
-    lastName: ''
-  });
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [errors, setErrors] = useState({});
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
-    }
-  };
-
-  const validateForm = () => {
-    const newErrors = {};
-
-    if (!formData.email) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email is invalid';
-    }
-
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
-    }
-
-    if (!formData.confirmPassword) {
-      newErrors.confirmPassword = 'Please confirm your password';
-    } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
-    }
-
-    if (!formData.firstName) {
-      newErrors.firstName = 'First name is required';
-    }
-
-    if (!formData.lastName) {
-      newErrors.lastName = 'Last name is required';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
-
-    setIsLoading(true);
-    setErrors({});
-
-    try {
-      // Create admin user account
-      const { data, error } = await auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            first_name: formData.firstName,
-            last_name: formData.lastName,
-            role: 'Administrator',
-            organization: 'EventEase Platform',
-            phone: '',
-            timezone: 'UTC-5',
-            language: 'English'
-          }
-        }
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      if (data.user) {
-        setIsSuccess(true);
-        console.log('Admin account created successfully:', data.user);
-        
-        // Clear form
-        setFormData({
-          email: '',
-          password: '',
-          confirmPassword: '',
-          firstName: '',
-          lastName: ''
-        });
-      }
-    } catch (error) {
-      console.error('Error creating admin account:', error);
-      setErrors({ submit: error.message || 'Failed to create admin account' });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  if (isSuccess) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-        <div className="sm:mx-auto sm:w-full sm:max-w-md">
-          <div className="text-center">
-            <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">Admin Account Created!</h2>
-            <p className="text-gray-600 mb-6">
-              The administrator account has been successfully created.
-            </p>
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-              <p className="text-sm text-blue-800">
-                <strong>Next Steps:</strong><br />
-                1. Check your email for confirmation (if email confirmation is enabled)<br />
-                2. Login with the admin credentials<br />
-                3. Access the admin panel from the sidebar
-              </p>
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-2xl w-full">
+        <div className="bg-white rounded-xl shadow-2xl border border-gray-200 p-8">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <div className="flex justify-center mb-4">
+              <div className="p-3 bg-blue-100 rounded-full">
+                <Shield className="h-12 w-12 text-blue-600" />
+              </div>
             </div>
-            <div className="space-y-3">
-              <button
-                onClick={() => navigate('/login')}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-              >
-                Go to Login
-              </button>
-              <button
-                onClick={() => setIsSuccess(false)}
-                className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-              >
-                Create Another Admin
-              </button>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              Admin Account Setup
+            </h1>
+            <p className="text-gray-600">
+              Admin accounts are pre-configured for security
+            </p>
+          </div>
+
+          {/* Alert */}
+          <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
+            <div className="flex">
+              <AlertCircle className="h-5 w-5 text-blue-400 mr-3 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm text-blue-700">
+                  <strong>Security Notice:</strong> Admin accounts are not created through the UI. 
+                  They must be set up using the provided script or manually in Supabase.
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
-    );
-  }
 
-  return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="text-center">
-          <Shield className="h-16 w-16 text-primary-600 mx-auto mb-4" />
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">Create Admin Account</h2>
-          <p className="text-gray-600 mb-8">
-            Create an administrator account for EventEase platform management
-          </p>
-        </div>
-
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            {/* Name Fields */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
-                  First Name
-                </label>
-                <div className="mt-1 relative">
-                  <input
-                    id="firstName"
-                    name="firstName"
-                    type="text"
-                    required
-                    value={formData.firstName}
-                    onChange={handleChange}
-                    className={`appearance-none block w-full px-3 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
-                      errors.firstName ? 'border-red-300' : 'border-gray-300'
-                    }`}
-                    placeholder="Enter first name"
-                  />
-                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                    <User className="h-5 w-5 text-gray-400" />
-                  </div>
-                </div>
-                {errors.firstName && (
-                  <p className="mt-1 text-sm text-red-600">{errors.firstName}</p>
-                )}
-              </div>
-
-              <div>
-                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
-                  Last Name
-                </label>
-                <div className="mt-1 relative">
-                  <input
-                    id="lastName"
-                    name="lastName"
-                    type="text"
-                    required
-                    value={formData.lastName}
-                    onChange={handleChange}
-                    className={`appearance-none block w-full px-3 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
-                      errors.lastName ? 'border-red-300' : 'border-gray-300'
-                    }`}
-                    placeholder="Enter last name"
-                  />
-                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                    <User className="h-5 w-5 text-gray-400" />
-                  </div>
-                </div>
-                {errors.lastName && (
-                  <p className="mt-1 text-sm text-red-600">{errors.lastName}</p>
-                )}
-              </div>
-            </div>
-
-            {/* Email */}
+          {/* Instructions */}
+          <div className="space-y-6">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email Address
-              </label>
-              <div className="mt-1 relative">
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={formData.email}
-                  onChange={handleChange}
-                  className={`appearance-none block w-full px-3 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
-                    errors.email ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                  placeholder="admin@eventease.com"
-                />
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-gray-400" />
-                </div>
-              </div>
-              {errors.email && (
-                <p className="mt-1 text-sm text-red-600">{errors.email}</p>
-              )}
-            </div>
-
-            {/* Password */}
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
-              </label>
-              <div className="mt-1 relative">
-                <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="new-password"
-                  required
-                  value={formData.password}
-                  onChange={handleChange}
-                  className={`appearance-none block w-full px-3 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
-                    errors.password ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                  placeholder="Enter password"
-                />
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                  <button
-                    type="button"
-                    className="text-gray-400 hover:text-gray-500"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-5 w-5" />
-                    ) : (
-                      <Eye className="h-5 w-5" />
-                    )}
-                  </button>
-                </div>
-              </div>
-              {errors.password && (
-                <p className="mt-1 text-sm text-red-600">{errors.password}</p>
-              )}
-            </div>
-
-            {/* Confirm Password */}
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-                Confirm Password
-              </label>
-              <div className="mt-1 relative">
-                <input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  autoComplete="new-password"
-                  required
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  className={`appearance-none block w-full px-3 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
-                    errors.confirmPassword ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                  placeholder="Confirm password"
-                />
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                  <button
-                    type="button"
-                    className="text-gray-400 hover:text-gray-500"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  >
-                    {showConfirmPassword ? (
-                      <EyeOff className="h-5 w-5" />
-                    ) : (
-                      <Eye className="h-5 w-5" />
-                    )}
-                  </button>
-                </div>
-              </div>
-              {errors.confirmPassword && (
-                <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>
-              )}
-            </div>
-
-            {/* Admin Notice */}
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <div className="flex">
-                <Shield className="h-5 w-5 text-yellow-400 mt-0.5 mr-3" />
-                <div>
-                  <h3 className="text-sm font-medium text-yellow-800">Administrator Account</h3>
-                  <p className="text-sm text-yellow-700 mt-1">
-                    This account will have full administrative privileges including user management, 
-                    event oversight, and system configuration access.
-                  </p>
+              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <FileText className="h-5 w-5 mr-2 text-blue-600" />
+                Setup Instructions
+              </h2>
+              
+              <div className="space-y-4">
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h3 className="font-medium text-gray-900 mb-2">Option 1: Using Setup Script (Recommended)</h3>
+                                     <ol className="list-decimal list-inside space-y-2 text-sm text-gray-700 ml-2">
+                     <li>Get your Supabase Service Role Key from Dashboard &gt; Settings &gt; API</li>
+                     <li>Set environment variables (see ADMIN_SETUP.md)</li>
+                     <li>Run: <code className="bg-white px-2 py-1 rounded text-xs">node scripts/create-admin.js</code></li>
+                     <li>Save the generated credentials securely</li>
+                   </ol>
+                 </div>
+ 
+                 <div className="bg-gray-50 rounded-lg p-4">
+                   <h3 className="font-medium text-gray-900 mb-2">Option 2: Manual Setup via Supabase Dashboard</h3>
+                   <ol className="list-decimal list-inside space-y-2 text-sm text-gray-700 ml-2">
+                     <li>Go to Supabase Dashboard &gt; Authentication &gt; Users</li>
+                    <li>Create a new user with your admin email</li>
+                    <li>Set user metadata: <code className="bg-white px-2 py-1 rounded text-xs">role: "Administrator"</code></li>
+                    <li>See ADMIN_SETUP.md for detailed instructions</li>
+                  </ol>
                 </div>
               </div>
             </div>
 
-            {/* Submit Button */}
-            <div>
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Creating Admin Account...
-                  </>
-                ) : (
-                  <>
-                    <Shield className="h-4 w-4 mr-2" />
-                    Create Admin Account
-                  </>
-                )}
-              </button>
-            </div>
-
-            {/* Error Message */}
-            {errors.submit && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <div className="flex">
-                  <XCircle className="h-5 w-5 text-red-400 mt-0.5 mr-3" />
+            {/* Documentation Link */}
+            <div className="border-t border-gray-200 pt-6">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div className="flex items-start">
+                  <Key className="h-5 w-5 text-yellow-600 mr-3 flex-shrink-0 mt-0.5" />
                   <div>
-                    <h3 className="text-sm font-medium text-red-800">Error</h3>
-                    <p className="text-sm text-red-700 mt-1">{errors.submit}</p>
+                    <h3 className="font-medium text-yellow-900 mb-1">Complete Setup Guide</h3>
+                    <p className="text-sm text-yellow-800 mb-3">
+                      For detailed instructions, see the <code className="bg-yellow-100 px-1 rounded">ADMIN_SETUP.md</code> file in the project root.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <div className="flex items-center text-xs text-yellow-700">
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        Step-by-step guide
+                      </div>
+                      <div className="flex items-center text-xs text-yellow-700">
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        Security best practices
+                      </div>
+                      <div className="flex items-center text-xs text-yellow-700">
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        Troubleshooting tips
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
-            )}
+            </div>
 
-            {/* Back to Login */}
-            <div className="text-center">
-              <p className="text-sm text-gray-600">
-                Already have an account?{' '}
-                <button
-                  type="button"
-                  onClick={() => navigate('/login')}
-                  className="font-medium text-primary-600 hover:text-primary-500"
-                >
-                  Sign in here
-                </button>
+            {/* Actions */}
+            <div className="flex flex-col sm:flex-row gap-4 pt-4">
+              <Link
+                to="/login"
+                className="flex-1 flex items-center justify-center px-6 py-3 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+              >
+                Go to Login
+              </Link>
+              <a
+                href="https://supabase.com/dashboard"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 flex items-center justify-center px-6 py-3 border border-transparent rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+              >
+                Open Supabase Dashboard
+              </a>
+            </div>
+
+            {/* Footer Note */}
+            <div className="text-center pt-4 border-t border-gray-200">
+              <p className="text-xs text-gray-500">
+                Need help? Check the <code className="bg-gray-100 px-1 rounded">ADMIN_SETUP.md</code> file for detailed instructions.
               </p>
             </div>
-          </form>
+          </div>
         </div>
       </div>
     </div>

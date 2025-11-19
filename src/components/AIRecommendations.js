@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Sparkles, 
   Calendar, 
@@ -11,10 +12,12 @@ import {
   AlertCircle,
   CheckCircle
 } from 'lucide-react';
-import { aiService } from '../services/aiService';
+import { recommendationService } from '../services/recommendationService';
+import { insightsEngineService } from '../services/insightsEngineService';
 import { auth } from '../lib/supabase';
 
 const AIRecommendations = ({ user: propUser }) => {
+  const navigate = useNavigate();
   const [recommendations, setRecommendations] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -35,10 +38,6 @@ const AIRecommendations = ({ user: propUser }) => {
       setLoading(true);
       setError(null);
 
-      if (!aiService.isConfigured()) {
-        throw new Error('AI service not configured. Please add your OpenAI API key.');
-      }
-
       // Debug logging
       console.log('User object:', user);
       console.log('User ID:', user?.id);
@@ -47,7 +46,25 @@ const AIRecommendations = ({ user: propUser }) => {
         throw new Error('User not authenticated. Please log in to get personalized recommendations.');
       }
 
-      const data = await aiService.getPersonalizedRecommendations(user.id);
+      // Get user metadata (includes signup preferences) for immediate recommendations
+      let userMetadata = null;
+      try {
+        const { data: { user: currentUser } } = await auth.getUser();
+        userMetadata = currentUser?.user_metadata || null;
+      } catch (err) {
+        console.log('Could not fetch user metadata:', err);
+      }
+
+      // Use rule-based engine directly (faster, no external API calls)
+      // Skip Python service check to avoid timeout delays
+      let data;
+      try {
+        data = await insightsEngineService.getPersonalizedRecommendations(user.id);
+      } catch (aiError) {
+        console.error('Error loading recommendations:', aiError);
+        throw aiError;
+      }
+      
       setRecommendations(data);
     } catch (error) {
       console.error('Error loading recommendations:', error);
@@ -69,30 +86,7 @@ const AIRecommendations = ({ user: propUser }) => {
     return 'Low';
   };
 
-  if (!aiService.isConfigured()) {
-    return (
-      <div className="card">
-        <div className="flex items-center mb-4">
-          <Sparkles className="text-primary-600 mr-3" size={24} />
-          <h3 className="text-lg font-semibold text-gray-900">AI Event Recommendations</h3>
-        </div>
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <div className="flex items-center">
-            <AlertCircle className="text-yellow-600 mr-2" size={20} />
-            <div>
-              <p className="text-yellow-800 font-medium">AI Service Not Configured</p>
-              <p className="text-yellow-700 text-sm mt-1">
-                Add your OpenAI API key to enable AI-powered recommendations.
-              </p>
-              <p className="text-yellow-700 text-sm">
-                Add <code className="bg-yellow-100 px-1 rounded">REACT_APP_OPENAI_API_KEY</code> to your environment variables.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Note: We now use rule-based engine as fallback, so no need to block
 
   return (
     <div className="card">
@@ -188,10 +182,18 @@ const AIRecommendations = ({ user: propUser }) => {
                 )}
 
                 <div className="mt-4 flex space-x-2">
-                  <button className="btn-primary text-sm">
+                  <button 
+                    onClick={() => rec.eventId && navigate(`/events/${rec.eventId}`)}
+                    disabled={!rec.eventId}
+                    className="btn-primary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
                     View Event
                   </button>
-                  <button className="btn-secondary text-sm">
+                  <button 
+                    onClick={() => rec.eventId && navigate(`/events/${rec.eventId}`)}
+                    disabled={!rec.eventId}
+                    className="btn-secondary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
                     Register
                   </button>
                 </div>

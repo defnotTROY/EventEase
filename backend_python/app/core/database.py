@@ -6,7 +6,6 @@ from sqlalchemy import create_engine, MetaData
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import sessionmaker
-from motor.motor_asyncio import AsyncIOMotorClient
 from typing import AsyncGenerator
 import logging
 
@@ -14,8 +13,8 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-# SQLAlchemy setup for PostgreSQL
-if settings.DATABASE_URL:
+# SQLAlchemy setup for PostgreSQL (skip if using Supabase)
+if settings.DATABASE_URL and not settings.SUPABASE_URL:
     # Convert sync URL to async URL
     if settings.DATABASE_URL.startswith("postgresql://"):
         async_database_url = settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://")
@@ -41,14 +40,26 @@ if settings.DATABASE_URL:
     
     # Metadata for migrations
     metadata = MetaData()
-
 else:
-    # MongoDB setup
+    # When using Supabase, create dummy values for compatibility
+    engine = None
+    Base = declarative_base()  # Still create Base for model definitions
+    metadata = MetaData()
+    AsyncSessionLocal = None
+    # MongoDB setup (only imported if needed)
+    try:
+        from motor.motor_asyncio import AsyncIOMotorClient
+    except ImportError:
+        AsyncIOMotorClient = None
+        logger.warning("Motor (MongoDB driver) not installed. MongoDB functionality will be unavailable.")
+    
     client = None
     database = None
     
     async def init_mongodb():
         """Initialize MongoDB connection"""
+        if AsyncIOMotorClient is None:
+            raise ImportError("Motor is required for MongoDB but not installed. Install it with: pip install motor")
         global client, database
         client = AsyncIOMotorClient(settings.MONGODB_URL)
         database = client.eventease

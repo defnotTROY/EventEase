@@ -54,7 +54,43 @@ class DashboardService {
         .lt('created_at', thirtyDaysAgo.toISOString());
 
       const previousEventCount = previousEvents?.length || 0;
-      const eventGrowth = previousEventCount > 0 ? Math.round(((totalEvents - previousEventCount) / previousEventCount) * 100) : 0;
+      let previousParticipants = 0;
+      let previousAttended = 0;
+
+      if (previousEvents && previousEvents.length > 0) {
+        for (const event of previousEvents) {
+          const { data: participants, error: participantsError } = await supabase
+            .from('participants')
+            .select('status')
+            .eq('event_id', event.id);
+
+          if (!participantsError && participants) {
+            previousParticipants += participants.length;
+            previousAttended += participants.filter(p => p.status === 'attended').length;
+          }
+        }
+      }
+
+      const previousEngagementRate = previousParticipants > 0
+        ? Math.round((previousAttended / previousParticipants) * 100)
+        : null;
+
+      const eventGrowth = previousEventCount > 0
+        ? Math.round(((totalEvents - previousEventCount) / previousEventCount) * 100)
+        : null;
+
+      const participantGrowth = previousParticipants > 0
+        ? Math.round(((totalParticipants - previousParticipants) / previousParticipants) * 100)
+        : null;
+
+      const engagementChange = previousEngagementRate !== null
+        ? engagementRate - previousEngagementRate
+        : null;
+
+      const previousUpcomingEvents = previousEvents?.filter(e => e.status === 'upcoming').length || 0;
+      const upcomingChange = previousUpcomingEvents > 0
+        ? Math.round(((upcomingEvents - previousUpcomingEvents) / previousUpcomingEvents) * 100)
+        : null;
 
       return {
         totalEvents,
@@ -64,6 +100,9 @@ class DashboardService {
         activeEvents,
         completedEvents,
         eventGrowth,
+        participantGrowth,
+        engagementChange,
+        upcomingChange,
         totalAttended
       };
     } catch (error) {

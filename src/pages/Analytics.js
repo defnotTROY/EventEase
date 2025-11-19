@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   TrendingUp, 
   Users, 
@@ -18,6 +18,7 @@ import AIRecommendations from '../components/AIRecommendations';
 import AIScheduler from '../components/AIScheduler';
 import AIFeedbackAnalysis from '../components/AIFeedbackAnalysis';
 import { auth } from '../lib/supabase';
+import { canAccessAnalytics } from '../services/roleService';
 
 const Analytics = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('30d');
@@ -33,13 +34,45 @@ const Analytics = () => {
   const [categoryPerformance, setCategoryPerformance] = useState([]);
   const [aiInsights, setAiInsights] = useState([]);
   const [demographics, setDemographics] = useState(null);
+  const [registrationSources, setRegistrationSources] = useState(null);
+  const [satisfaction, setSatisfaction] = useState(null);
+  const [periodOptions, setPeriodOptions] = useState([]);
 
-  const periods = [
-    { id: '7d', name: 'Last 7 days' },
-    { id: '30d', name: 'Last 30 days' },
-    { id: '90d', name: 'Last 90 days' },
-    { id: '1y', name: 'Last year' },
-  ];
+  const iconMap = useMemo(() => ({
+    Calendar,
+    Users,
+    TrendingUp,
+    Activity
+  }), []);
+
+  const getChangeDisplay = (change, suffix = '%') => {
+    if (change === null || change === undefined) {
+      return {
+        label: '—',
+        className: 'text-gray-400'
+      };
+    }
+
+    const numericChange = Number(change);
+    if (Number.isNaN(numericChange)) {
+      return {
+        label: '—',
+        className: 'text-gray-400'
+      };
+    }
+
+    const sign = numericChange > 0 ? '+' : numericChange < 0 ? '' : '';
+    const className = numericChange > 0
+      ? 'text-green-600'
+      : numericChange < 0
+        ? 'text-red-600'
+        : 'text-gray-500';
+
+    return {
+      label: `${sign}${numericChange}${suffix}`,
+      className
+    };
+  };
 
   // Load user and analytics data
   useEffect(() => {
@@ -47,11 +80,25 @@ const Analytics = () => {
       try {
         const { user } = await auth.getCurrentUser();
         setUser(user);
+        
+        if (!user) {
+          setError('Please log in to view analytics');
+          return;
+        }
+
+        // Check if user can access analytics
+        if (!canAccessAnalytics(user)) {
+          setError('You need to be an Event Organizer to access analytics');
+          setLoading(false);
+          return;
+        }
+
         if (user) {
           await loadAnalyticsData();
         }
       } catch (error) {
         console.error('Error getting user:', error);
+        setError('Failed to load user data');
       }
     };
 
@@ -70,54 +117,36 @@ const Analytics = () => {
         trendData,
         categoryData,
         insights,
-        demoData
+        demoData,
+        sourcesData,
+        satisfactionData,
+        periodsList
       ] = await Promise.all([
         analyticsService.getOverviewStats(),
         analyticsService.getEventsList(),
         analyticsService.getEngagementTrend(selectedPeriod),
         analyticsService.getCategoryPerformance(),
         analyticsService.getAIInsights(),
-        analyticsService.getParticipantDemographics()
+        analyticsService.getParticipantDemographics(),
+        analyticsService.getRegistrationSources(),
+        analyticsService.getEventSatisfaction(),
+        analyticsService.getAvailablePeriods()
       ]);
 
       // Format overview stats
-      const formattedStats = [
-        { 
-          name: 'Total Events', 
-          value: stats.totalEvents.toString(), 
-          change: stats.eventGrowth > 0 ? `+${stats.eventGrowth}%` : '0%', 
-          icon: Calendar, 
-          color: 'blue' 
-        },
-        { 
-          name: 'Total Participants', 
-          value: stats.totalParticipants.toLocaleString(), 
-          change: '+0%', // Could calculate this with historical data
-          icon: Users, 
-          color: 'green' 
-        },
-        { 
-          name: 'Engagement Rate', 
-          value: `${stats.engagementRate}%`, 
-          change: '+0%', // Could calculate this with historical data
-          icon: TrendingUp, 
-          color: 'purple' 
-        },
-        { 
-          name: 'Attended Events', 
-          value: stats.totalAttended.toString(), 
-          change: '+0%', // Could calculate this with historical data
-          icon: Activity, 
-          color: 'orange' 
-        },
-      ];
-
-      setOverviewStats(formattedStats);
+      setOverviewStats(stats.cards || []);
       setEvents(eventsList);
       setEngagementData(trendData);
       setCategoryPerformance(categoryData);
       setAiInsights(insights);
       setDemographics(demoData);
+      setRegistrationSources(sourcesData);
+      setSatisfaction(satisfactionData);
+      setPeriodOptions(periodsList);
+
+      if (periodsList.length > 0 && !periodsList.some(period => period.id === selectedPeriod)) {
+        setSelectedPeriod(periodsList[0].id);
+      }
 
     } catch (error) {
       console.error('Error loading analytics data:', error);
@@ -206,7 +235,7 @@ const Analytics = () => {
                   onChange={(e) => setSelectedPeriod(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 >
-                  {periods.map(period => (
+              {periodOptions.map(period => (
                     <option key={period.id} value={period.id}>{period.name}</option>
                   ))}
                 </select>
@@ -217,15 +246,20 @@ const Analytics = () => {
           {/* Overview Stats */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {overviewStats.map((stat) => (
-              <div key={stat.name} className="card">
+          <div key={stat.id} className="card">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">{stat.name}</p>
-                    <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-                    <p className="text-sm text-green-600">{stat.change}</p>
+                <p className="text-sm font-medium text-gray-600">{stat.label}</p>
+                <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+                <p className={`text-sm ${getChangeDisplay(stat.changeValue, stat.changeUnit || '%').className}`}>
+                  {getChangeDisplay(stat.changeValue, stat.changeUnit || '%').label}
+                </p>
                   </div>
-                  <div className={`p-3 rounded-full bg-${stat.color}-100`}>
-                    <stat.icon className={`text-${stat.color}-600`} size={24} />
+              <div className={`p-3 rounded-full ${stat.iconBackgroundClass}`}>
+                {(() => {
+                  const IconComponent = iconMap[stat.icon] || TrendingUp;
+                  return <IconComponent className={stat.iconColorClass} size={24} />;
+                })()}
                   </div>
                 </div>
               </div>
@@ -358,33 +392,34 @@ const Analytics = () => {
             {/* Participant Demographics */}
             <div className="card">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Participant Demographics</h3>
-              {demographics ? (
+              {demographics && demographics.demographics && demographics.demographics.length > 0 ? (
                 <div className="space-y-4">
                   <div className="text-center mb-4">
                     <div className="text-2xl font-bold text-primary-600">{demographics.totalParticipants}</div>
                     <div className="text-sm text-gray-600">Total Participants</div>
                   </div>
-                  {demographics.demographics.map((demo, index) => (
-                    <div key={index}>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">Age {demo.ageGroup}</span>
-                        <span className="text-sm font-medium text-gray-900">{demo.percentage}%</span>
+                  {demographics.demographics.map((demo, index) => {
+                    const colors = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-orange-500'];
+                    return (
+                      <div key={index}>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600">Age {demo.ageGroup}</span>
+                          <span className="text-sm font-medium text-gray-900">{demo.percentage}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div 
+                            className={`h-2 rounded-full ${colors[index % colors.length]}`} 
+                            style={{ width: `${demo.percentage}%` }}
+                          ></div>
+                        </div>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className={`h-2 rounded-full ${
-                            index === 0 ? 'bg-blue-500' : 
-                            index === 1 ? 'bg-green-500' : 'bg-purple-500'
-                          }`} 
-                          style={{ width: `${demo.percentage}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="text-center py-8 text-gray-500">
-                  No demographic data available
+                  <p>No demographic data available</p>
+                  <p className="text-xs mt-2">Add age information to participants to see demographics</p>
                 </div>
               )}
             </div>
@@ -392,63 +427,77 @@ const Analytics = () => {
             {/* Registration Sources */}
             <div className="card">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Registration Sources</h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Direct Website</span>
-                  <span className="text-sm font-medium text-gray-900">45%</span>
+              {registrationSources && registrationSources.sources.length > 0 ? (
+                <div className="space-y-4">
+                  {registrationSources.sources.map((source, index) => {
+                    const colors = ['bg-primary-500', 'bg-green-500', 'bg-orange-500', 'bg-purple-500', 'bg-blue-500'];
+                    return (
+                      <div key={index}>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600">{source.source}</span>
+                          <span className="text-sm font-medium text-gray-900">{source.percentage}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div 
+                            className={`${colors[index % colors.length]} h-2 rounded-full`} 
+                            style={{ width: `${source.percentage}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-primary-500 h-2 rounded-full" style={{ width: '45%' }}></div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  No registration source data available
                 </div>
-                
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Social Media</span>
-                  <span className="text-sm font-medium text-gray-900">28%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-green-500 h-2 rounded-full" style={{ width: '28%' }}></div>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Email Marketing</span>
-                  <span className="text-sm font-medium text-gray-900">27%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-orange-500 h-2 rounded-full" style={{ width: '27%' }}></div>
-                </div>
-              </div>
+              )}
             </div>
 
             {/* Event Satisfaction */}
             <div className="card">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Event Satisfaction</h3>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-primary-600 mb-2">4.7/5</div>
-                <div className="flex justify-center mb-4">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <div key={star} className="w-5 h-5 bg-yellow-400 rounded-full mx-1"></div>
-                  ))}
+              {satisfaction && !satisfaction.isEmpty ? (
+                <>
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-primary-600 mb-2">
+                      {satisfaction.averageRating.toFixed(1)}/5
+                    </div>
+                    <div className="flex justify-center mb-4">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <div 
+                          key={star} 
+                          className={`w-5 h-5 rounded-full mx-1 ${
+                            star <= Math.round(satisfaction.averageRating) 
+                              ? 'bg-yellow-400' 
+                              : 'bg-gray-300'
+                          }`}
+                        ></div>
+                      ))}
+                    </div>
+                    <p className="text-sm text-gray-600">
+                      Based on {satisfaction.totalRatings} {satisfaction.totalRatings === 1 ? 'rating' : 'ratings'}
+                    </p>
+                  </div>
+                  <div className="mt-4 space-y-2">
+                    {satisfaction.distribution.map((dist, index) => (
+                      <div key={index} className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">
+                          {dist.rating === 5 ? 'Excellent (5)' :
+                           dist.rating === 4 ? 'Good (4)' :
+                           dist.rating === 3 ? 'Average (3)' :
+                           dist.rating === 2 ? 'Fair (2)' : 'Poor (1)'}
+                        </span>
+                        <span className="font-medium text-gray-900">{dist.percentage}%</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  No satisfaction ratings available yet
                 </div>
-                <p className="text-sm text-gray-600">Based on participant feedback</p>
-              </div>
-              <div className="mt-4 space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">Excellent (5)</span>
-                  <span className="font-medium text-gray-900">65%</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">Good (4)</span>
-                  <span className="font-medium text-gray-900">25%</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">Average (3)</span>
-                  <span className="font-medium text-gray-900">8%</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">Below Average</span>
-                  <span className="font-medium text-gray-900">2%</span>
-                </div>
-              </div>
+              )}
             </div>
           </div>
 

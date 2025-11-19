@@ -18,6 +18,8 @@ import SearchPage from './pages/SearchPage';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminUserManagement from './pages/AdminUserManagement';
 import AdminEventManagement from './pages/AdminEventManagement';
+import AdminVerificationReview from './pages/AdminVerificationReview';
+import AdminQRCheckIn from './pages/AdminQRCheckIn';
 import CreateAdminAccount from './pages/CreateAdminAccount';
 import { auth } from './lib/supabase';
 
@@ -99,6 +101,8 @@ function AppContent() {
                 <Route path="/admin" element={<AdminDashboard />} />
                 <Route path="/admin/users" element={<AdminUserManagement />} />
                 <Route path="/admin/events" element={<AdminEventManagement />} />
+                <Route path="/admin/verifications" element={<AdminVerificationReview />} />
+                <Route path="/admin/qr-checkin" element={<AdminQRCheckIn />} />
               </Routes>
             </div>
           </main>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Clock, 
   Calendar, 
@@ -13,11 +13,16 @@ import {
   Settings
 } from 'lucide-react';
 import { aiService } from '../services/aiService';
+import { insightsEngineService } from '../services/insightsEngineService';
+import { eventsService } from '../services/eventsService';
 
 const AIScheduler = ({ eventId, eventDetails }) => {
   const [schedule, setSchedule] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [eventInfo, setEventInfo] = useState(eventDetails || null);
+  const [eventInfoError, setEventInfoError] = useState(null);
+  const [eventLoading, setEventLoading] = useState(false);
   const [constraints, setConstraints] = useState({
     startTime: '09:00',
     endTime: '17:00',
@@ -28,16 +33,77 @@ const AIScheduler = ({ eventId, eventDetails }) => {
   });
   const [showSettings, setShowSettings] = useState(false);
 
+  useEffect(() => {
+    setEventInfo(eventDetails || null);
+  }, [eventDetails]);
+
+  useEffect(() => {
+    if (!eventId || eventDetails) return;
+
+    let isMounted = true;
+    const loadEvent = async () => {
+      try {
+        setEventLoading(true);
+        setEventInfoError(null);
+        const { data, error } = await eventsService.getEvent(eventId);
+        if (!isMounted) return;
+        if (error) {
+          setEventInfoError(error.message || 'Unable to load event details');
+        } else {
+          setEventInfo(data);
+        }
+      } catch (fetchError) {
+        if (!isMounted) return;
+        setEventInfoError(fetchError.message || 'Unable to load event details');
+      } finally {
+        if (isMounted) {
+          setEventLoading(false);
+        }
+      }
+    };
+
+    loadEvent();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [eventId, eventDetails]);
+
+  const missingFields = useMemo(() => {
+    if (!eventInfo) return ['event details'];
+
+    const fields = [];
+    if (!eventInfo.date) fields.push('event date');
+    if (!eventInfo.time) fields.push('start time');
+    if (!eventInfo.location && !eventInfo.is_virtual) fields.push('location');
+    return fields;
+  }, [eventInfo]);
+
+  const isEventReady = eventInfo && missingFields.length === 0;
+
   const generateSchedule = async () => {
     try {
+      if (!isEventReady) {
+        setError(`Please add ${missingFields.join(', ')} before generating a schedule.`);
+        return;
+      }
+
       setLoading(true);
       setError(null);
 
-      if (!aiService.isConfigured()) {
-        throw new Error('AI service not configured. Please add your OpenAI API key.');
+      // Try AI service first, fall back to rule-based engine
+      let data;
+      try {
+        if (aiService.isConfigured()) {
+          data = await aiService.generateOptimalSchedule(eventId, constraints);
+        } else {
+          throw new Error('AI not configured, using rule-based engine');
+        }
+      } catch (aiError) {
+        console.log('Using rule-based scheduler:', aiError.message);
+        data = await insightsEngineService.generateOptimalSchedule(eventId, constraints);
       }
-
-      const data = await aiService.generateOptimalSchedule(eventId, constraints);
+      
       setSchedule(data);
     } catch (error) {
       console.error('Error generating schedule:', error);
@@ -45,6 +111,16 @@ const AIScheduler = ({ eventId, eventDetails }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const formatDateDisplay = (dateString) => {
+    if (!dateString) return null;
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
   };
 
   const getActivityIcon = (type) => {
@@ -74,27 +150,7 @@ const AIScheduler = ({ eventId, eventDetails }) => {
     return `${endHours}:${endMins.toString().padStart(2, '0')}`;
   };
 
-  if (!aiService.isConfigured()) {
-    return (
-      <div className="card">
-        <div className="flex items-center mb-4">
-          <Clock className="text-primary-600 mr-3" size={24} />
-          <h3 className="text-lg font-semibold text-gray-900">AI Event Scheduler</h3>
-        </div>
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <div className="flex items-center">
-            <AlertCircle className="text-yellow-600 mr-2" size={20} />
-            <div>
-              <p className="text-yellow-800 font-medium">AI Service Not Configured</p>
-              <p className="text-yellow-700 text-sm mt-1">
-                Add your OpenAI API key to enable AI-powered scheduling.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Note: We now use rule-based engine as fallback, so no need to block
 
   return (
     <div className="card">
@@ -113,7 +169,7 @@ const AIScheduler = ({ eventId, eventDetails }) => {
           </button>
           <button
             onClick={generateSchedule}
-            disabled={loading}
+            disabled={loading || !isEventReady}
             className="btn-primary text-sm"
           >
             {loading ? (
@@ -125,6 +181,53 @@ const AIScheduler = ({ eventId, eventDetails }) => {
           </button>
         </div>
       </div>
+
+      {eventLoading && (
+        <div className="flex items-center justify-center py-6">
+          <Loader2 className="animate-spin text-primary-600 mr-3" size={20} />
+          <span className="text-gray-600">Loading event details...</span>
+        </div>
+      )}
+
+      {eventInfoError && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center">
+            <AlertCircle className="text-red-600 mr-2" size={20} />
+            <div>
+              <p className="text-red-800 font-medium">Unable to load event</p>
+              <p className="text-red-700 text-sm">{eventInfoError}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {eventInfo && !eventLoading && (
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6 text-sm text-gray-600">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+            <div>
+              <span className="font-semibold text-gray-900">{eventInfo.title}</span>
+              {formatDateDisplay(eventInfo.date) && (
+                <span className="ml-2 text-gray-500">
+                  • {formatDateDisplay(eventInfo.date)} {eventInfo.time ? `at ${eventInfo.time}` : ''}
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-3 text-xs">
+              <span className="inline-flex items-center px-2 py-1 bg-primary-50 text-primary-700 rounded-full">
+                {eventInfo.category || 'Uncategorized'}
+              </span>
+              <span className="inline-flex items-center px-2 py-1 bg-gray-100 text-gray-600 rounded-full">
+                {eventInfo.location || (eventInfo.is_virtual ? 'Virtual event' : 'Location required')}
+              </span>
+              {eventInfo.max_participants && (
+                <span className="inline-flex items-center px-2 py-1 bg-gray-100 text-gray-600 rounded-full">
+                  Capacity: {eventInfo.max_participants}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Settings Panel */}
       {showSettings && (
@@ -261,11 +364,33 @@ const AIScheduler = ({ eventId, eventDetails }) => {
         </>
       )}
 
-      {!schedule && !loading && (
+      {!schedule && !loading && !eventLoading && (
         <div className="text-center py-8 text-gray-500">
-          <Clock className="mx-auto mb-3 text-gray-400" size={32} />
-          <p>Click "Generate Schedule" to create an AI-optimized timeline for your event.</p>
-          <p className="text-sm">The AI will consider best practices, participant engagement, and your constraints.</p>
+          {isEventReady ? (
+            <>
+              <Clock className="mx-auto mb-3 text-gray-400" size={32} />
+              <p>
+                Ready to generate a schedule for{' '}
+                <span className="font-medium text-gray-700">
+                  {eventInfo?.title || 'this event'}
+                </span>
+                . We’ll balance sessions, breaks, and networking using your constraints.
+              </p>
+              <p className="text-sm mt-2">
+                Configure time blocks in Settings, then click “Generate Schedule”.
+              </p>
+            </>
+          ) : (
+            <>
+              <AlertCircle className="mx-auto mb-3 text-yellow-500" size={32} />
+              <p className="font-medium text-gray-700">
+                Add {missingFields.join(', ')} to enable AI scheduling.
+              </p>
+              <p className="text-sm mt-2">
+                Once your event details are complete, the scheduler can create an optimized agenda automatically.
+              </p>
+            </>
+          )}
         </div>
       )}
     </div>

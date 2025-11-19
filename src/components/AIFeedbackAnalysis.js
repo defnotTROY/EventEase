@@ -12,23 +12,46 @@ import {
   Target
 } from 'lucide-react';
 import { aiService } from '../services/aiService';
+import { insightsEngineService } from '../services/insightsEngineService';
+import { eventsService } from '../services/eventsService';
 
 const AIFeedbackAnalysis = ({ eventId }) => {
   const [analysis, setAnalysis] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [metrics, setMetrics] = useState(null);
+  const [eventInfo, setEventInfo] = useState(null);
+  const [participantCount, setParticipantCount] = useState(null);
+  const [contextLoading, setContextLoading] = useState(false);
+  const [contextError, setContextError] = useState(null);
 
   const analyzeFeedback = async () => {
+    if (!participantCount || participantCount === 0) {
+      setAnalysis(null);
+      setMetrics(null);
+      setError(null);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
 
-      if (!aiService.isConfigured()) {
-        throw new Error('AI service not configured. Please add your OpenAI API key.');
+      // Try AI service first, fall back to rule-based engine
+      let data;
+      try {
+        if (aiService.isConfigured()) {
+          data = await aiService.analyzeFeedback(eventId);
+        } else {
+          throw new Error('AI not configured, using rule-based engine');
+        }
+      } catch (aiError) {
+        console.log('Using rule-based feedback analysis:', aiError.message);
+        data = await insightsEngineService.analyzeFeedback(eventId);
       }
-
-      const data = await aiService.analyzeFeedback(eventId);
+      
       setAnalysis(data);
+      setMetrics(data.metrics || null);
     } catch (error) {
       console.error('Error analyzing feedback:', error);
       setError(error.message);
@@ -59,32 +82,54 @@ const AIFeedbackAnalysis = ({ eventId }) => {
   };
 
   useEffect(() => {
-    if (eventId) {
-      analyzeFeedback();
-    }
+    if (!eventId) return;
+
+    let isMounted = true;
+    const loadContext = async () => {
+      try {
+        setContextLoading(true);
+        setContextError(null);
+        const [{ data: eventData, error: eventError }, participantResult] = await Promise.all([
+          eventsService.getEvent(eventId),
+          eventsService.getEventParticipants(eventId)
+        ]);
+
+        if (!isMounted) return;
+
+        if (eventError) throw eventError;
+        if (participantResult.error) throw participantResult.error;
+
+        setEventInfo(eventData);
+        setParticipantCount(participantResult.data || 0);
+      } catch (ctxError) {
+        if (!isMounted) return;
+        setContextError(ctxError.message || 'Failed to load event context');
+        setParticipantCount(0);
+      } finally {
+        if (isMounted) setContextLoading(false);
+      }
+    };
+
+    loadContext();
+    return () => {
+      isMounted = false;
+    };
   }, [eventId]);
 
-  if (!aiService.isConfigured()) {
-    return (
-      <div className="card">
-        <div className="flex items-center mb-4">
-          <BarChart3 className="text-primary-600 mr-3" size={24} />
-          <h3 className="text-lg font-semibold text-gray-900">AI Feedback Analysis</h3>
-        </div>
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <div className="flex items-center">
-            <AlertCircle className="text-yellow-600 mr-2" size={20} />
-            <div>
-              <p className="text-yellow-800 font-medium">AI Service Not Configured</p>
-              <p className="text-yellow-700 text-sm mt-1">
-                Add your OpenAI API key to enable AI-powered feedback analysis.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (!eventId) return;
+    if (participantCount === null) return;
+    if (participantCount === 0) {
+      setAnalysis(null);
+      setMetrics(null);
+      return;
+    }
+    analyzeFeedback();
+  }, [eventId, participantCount]);
+
+  // Note: We now use rule-based engine as fallback, so no need to block
+
+  const hasFeedbackData = metrics && metrics.totalParticipants > 0;
 
   return (
     <div className="card">
@@ -107,6 +152,55 @@ const AIFeedbackAnalysis = ({ eventId }) => {
         </button>
       </div>
 
+      {contextLoading && (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="animate-spin text-primary-600 mr-3" size={24} />
+          <span className="text-gray-600">Loading event data...</span>
+        </div>
+      )}
+
+      {contextError && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center">
+            <AlertCircle className="text-red-600 mr-2" size={20} />
+            <div>
+              <p className="text-red-800 font-medium">Unable to load event data</p>
+              <p className="text-red-700 text-sm">{contextError}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {eventInfo && (
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6 text-sm text-gray-600">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+            <div className="font-semibold text-gray-900">{eventInfo.title}</div>
+            <div className="flex flex-wrap gap-3 text-xs">
+              <span className="inline-flex items-center px-2 py-1 bg-primary-50 text-primary-700 rounded-full">
+                Participants: {participantCount ?? '—'}
+              </span>
+              {eventInfo.max_participants && (
+                <span className="inline-flex items-center px-2 py-1 bg-gray-100 text-gray-600 rounded-full">
+                  Capacity: {eventInfo.max_participants}
+                </span>
+              )}
+              {metrics && (
+                <>
+                  <span className="inline-flex items-center px-2 py-1 bg-green-50 text-green-700 rounded-full">
+                    Attendance: {metrics.attendanceRate}%
+                  </span>
+                  {metrics.registrationRate >= 0 && (
+                    <span className="inline-flex items-center px-2 py-1 bg-blue-50 text-blue-700 rounded-full">
+                      Filled: {metrics.registrationRate}%
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {loading && (
         <div className="flex items-center justify-center py-8">
           <Loader2 className="animate-spin text-primary-600 mr-3" size={24} />
@@ -126,7 +220,7 @@ const AIFeedbackAnalysis = ({ eventId }) => {
         </div>
       )}
 
-      {analysis && !loading && (
+      {analysis && !loading && hasFeedbackData && (
         <>
           {/* Performance Overview */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
@@ -157,9 +251,11 @@ const AIFeedbackAnalysis = ({ eventId }) => {
                 <h4 className="font-medium text-gray-900">Engagement</h4>
                 <Users className="text-blue-500" size={20} />
               </div>
-              <div className="text-2xl font-bold text-gray-900 mb-2">High</div>
-              <span className="px-2 py-1 text-xs font-medium rounded-full text-green-600 bg-green-100">
-                Strong Interest
+              <div className="text-2xl font-bold text-gray-900 mb-2">
+                {metrics.attendanceRate}% attendance
+              </div>
+              <span className="px-2 py-1 text-xs font-medium rounded-full text-blue-600 bg-blue-100">
+                {metrics.registrationRate}% of capacity reached
               </span>
             </div>
           </div>
@@ -257,11 +353,26 @@ const AIFeedbackAnalysis = ({ eventId }) => {
         </>
       )}
 
-      {!analysis && !loading && (
+      {(!analysis || !hasFeedbackData) && !loading && !contextLoading && (
         <div className="text-center py-8 text-gray-500">
-          <BarChart3 className="mx-auto mb-3 text-gray-400" size={32} />
-          <p>Click "Refresh Analysis" to get AI-powered feedback insights.</p>
-          <p className="text-sm">The AI will analyze attendance patterns and provide actionable recommendations.</p>
+          {participantCount === 0 ? (
+            <>
+              <AlertTriangle className="mx-auto mb-3 text-yellow-500" size={32} />
+              <p className="font-medium text-gray-700">
+                We need participant attendance data before running feedback analysis.
+              </p>
+              <p className="text-sm mt-2">
+                Once attendees check in for this event, come back to generate AI insights.
+              </p>
+            </>
+          ) : (
+            <>
+              <BarChart3 className="mx-auto mb-3 text-gray-400" size={32} />
+              <p>
+                Refresh the analysis after the event wraps up to review performance insights and recommendations.
+              </p>
+            </>
+          )}
         </div>
       )}
     </div>

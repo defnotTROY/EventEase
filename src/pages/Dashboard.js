@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { auth } from '../lib/supabase';
 import { dashboardService } from '../services/dashboardService';
+import AIRecommendations from '../components/AIRecommendations';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -72,6 +73,35 @@ const Dashboard = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
+  const getChangeDisplay = (change, suffix = '%') => {
+    if (change === null || change === undefined) {
+      return {
+        label: '—',
+        className: 'text-gray-400'
+      };
+    }
+
+    const numericChange = Number(change);
+    if (Number.isNaN(numericChange)) {
+      return {
+        label: '—',
+        className: 'text-gray-400'
+      };
+    }
+
+    const sign = numericChange > 0 ? '+' : numericChange < 0 ? '' : '';
+    const className = numericChange > 0
+      ? 'text-green-600'
+      : numericChange < 0
+        ? 'text-red-600'
+        : 'text-gray-500';
+
+    return {
+      label: `${sign}${numericChange}${suffix}`,
+      className
+    };
+  };
+
   const loadData = async () => {
     try {
       setError(null);
@@ -96,28 +126,28 @@ const Dashboard = () => {
         { 
           name: 'Total Events', 
           value: dashboardStats.totalEvents.toString(), 
-          change: dashboardStats.eventGrowth > 0 ? `+${dashboardStats.eventGrowth}%` : '0%', 
+          change: getChangeDisplay(dashboardStats.eventGrowth), 
           icon: Calendar, 
           color: 'blue' 
         },
         { 
           name: 'Active Participants', 
           value: dashboardStats.totalParticipants.toLocaleString(), 
-          change: '+0%', // Could calculate this with historical data
+          change: getChangeDisplay(dashboardStats.participantGrowth), 
           icon: Users, 
           color: 'green' 
         },
         { 
           name: 'Engagement Rate', 
           value: `${dashboardStats.engagementRate}%`, 
-          change: '+0%', // Could calculate this with historical data
+          change: getChangeDisplay(dashboardStats.engagementChange, 'pp'), 
           icon: TrendingUp, 
           color: 'purple' 
         },
         { 
           name: 'Upcoming Events', 
           value: dashboardStats.upcomingEvents.toString(), 
-          change: '+0%', // Could calculate this with historical data
+          change: getChangeDisplay(dashboardStats.upcomingChange), 
           icon: Clock, 
           color: 'orange' 
         },
@@ -186,7 +216,7 @@ const Dashboard = () => {
               <div>
                 <p className="text-sm font-medium text-gray-600">{stat.name}</p>
                 <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-                <p className="text-sm text-green-600">{stat.change}</p>
+                <p className={`text-sm ${stat.change.className}`}>{stat.change.label}</p>
               </div>
               <div className={`p-3 rounded-full bg-${stat.color}-100`}>
                 <stat.icon className={`text-${stat.color}-600`} size={24} />
@@ -218,7 +248,13 @@ const Dashboard = () => {
 
         <div className="p-6">
           {activeTab === 'overview' && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+            <>
+              {/* AI Recommendations */}
+              <div className="mb-6">
+                <AIRecommendations user={user} />
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
               {/* Upcoming Events */}
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Upcoming Events</h3>
@@ -279,7 +315,8 @@ const Dashboard = () => {
 
               {/* Spacer for third column at xl */}
               <div className="hidden xl:block" />
-            </div>
+              </div>
+            </>
           )}
 
           {activeTab === 'events' && (

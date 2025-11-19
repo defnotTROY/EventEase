@@ -19,6 +19,7 @@ import {
 import { eventsService } from '../services/eventsService';
 import { auth } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
+import { canManageParticipants } from '../services/roleService';
 
 const Participants = () => {
   const navigate = useNavigate();
@@ -27,11 +28,10 @@ const Participants = () => {
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [participants, setParticipants] = useState([]);
   const [events, setEvents] = useState([]);
+  const [statuses, setStatuses] = useState(['all', 'registered', 'attended', 'cancelled']);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
-
-  const statuses = ['all', 'active', 'pending', 'cancelled'];
 
   // Load data on component mount
   useEffect(() => {
@@ -47,6 +47,13 @@ const Participants = () => {
         }
         setUser(user);
 
+        // Check if user can manage participants
+        if (!canManageParticipants(user)) {
+          setError('You need to be an Event Organizer to manage participants');
+          setLoading(false);
+          return;
+        }
+
         // Load events for filter dropdown
         const { data: eventsData, error: eventsError } = await eventsService.getAllEvents();
         if (eventsError) throw eventsError;
@@ -56,6 +63,12 @@ const Participants = () => {
           ...eventsData.map(event => ({ id: event.id, name: event.title }))
         ];
         setEvents(eventsList);
+
+        // Load available statuses
+        const { data: statusList, error: statusError } = await eventsService.getParticipantStatuses();
+        if (!statusError && statusList) {
+          setStatuses(statusList);
+        }
 
         // Load participants data
         await loadParticipants();
@@ -71,64 +84,17 @@ const Participants = () => {
     loadData();
   }, [navigate]);
 
-  // Test function to check participants table access
-  const testParticipantsAccess = async () => {
-    try {
-      console.log('=== TESTING PARTICIPANTS TABLE ACCESS ===');
-      
-      // Use the supabase client from eventsService
-      const { supabase } = await import('../lib/supabase.js');
-      
-      // Test direct query to participants table
-      const { data, error } = await supabase
-        .from('participants')
-        .select('*')
-        .limit(10);
-      
-      console.log('Direct participants query result:', { data, error });
-      
-      if (error) {
-        console.error('RLS Policy Error:', error);
-        console.error('Error details:', error.message);
-        return false;
-      }
-      
-      console.log('Found participants via direct query:', data?.length || 0);
-      if (data && data.length > 0) {
-        console.log('Sample participant:', data[0]);
-      }
-      return true;
-    } catch (error) {
-      console.error('Error testing participants access:', error);
-      return false;
-    }
-  };
 
   // Load participants from database
   const loadParticipants = async () => {
     try {
-      console.log('=== LOADING PARTICIPANTS ===');
-      
-      // Test participants table access first
-      const hasAccess = await testParticipantsAccess();
-      if (!hasAccess) {
-        console.error('No access to participants table - RLS policy issue');
-        setError('Cannot access participants data. Please check RLS policies.');
-        return;
-      }
-      
       // Get all events first
       const { data: eventsData, error: eventsError } = await eventsService.getAllEvents();
       if (eventsError) {
-        console.error('Error loading events:', eventsError);
         throw eventsError;
       }
 
-      console.log('Events loaded:', eventsData);
-      console.log('Number of events:', eventsData?.length || 0);
-
       if (!eventsData || eventsData.length === 0) {
-        console.log('No events found, setting empty participants');
         setParticipants([]);
         return;
       }
@@ -137,26 +103,17 @@ const Participants = () => {
 
       // For each event, get its participants
       for (const event of eventsData) {
-        console.log(`\n--- Processing event: ${event.title} (ID: ${event.id}) ---`);
-        
         const { data: participantDetails, error: detailsError } = await eventsService.getEventParticipantsDetails(event.id);
         
         if (detailsError) {
-          console.error('Error loading participant details for event', event.id, ':', detailsError);
           continue;
         }
 
-        console.log('Participant details response:', participantDetails);
-        console.log('Number of participants for this event:', participantDetails?.length || 0);
-
         // Add participants to our list (avoiding duplicates)
         if (participantDetails && participantDetails.length > 0) {
-          participantDetails.forEach((participant, index) => {
-            console.log(`Participant ${index + 1}:`, participant);
-            
+          participantDetails.forEach((participant) => {
             // Validate required fields
             if (!participant.first_name || !participant.last_name) {
-              console.warn('Participant missing required fields:', participant);
               return; // Skip this participant
             }
             
@@ -172,34 +129,18 @@ const Participants = () => {
                 event_id: participant.event_id,
                 event_title: event.title,
                 registration_date: participant.created_at || participant.updated_at || new Date().toISOString(),
-                status: 'active' // Default status for now
+                status: participant.status || 'registered' // Use actual status from database
               };
               
-              console.log('Created participant object:', participantObj);
               participantMap.set(key, participantObj);
-              console.log('Added participant to map:', key);
-            } else {
-              console.log('Participant already exists in map:', key);
             }
           });
-        } else {
-          console.log('No participants found for this event');
         }
       }
 
       const participantsList = Array.from(participantMap.values());
-      console.log('\n=== FINAL RESULTS ===');
-      console.log('Total unique participants loaded:', participantsList.length);
-      console.log('Participants list:', participantsList);
-      
-      // Debug each participant object
-      participantsList.forEach((participant, index) => {
-        console.log(`Participant ${index + 1} details:`, participant);
-      });
-      
       setParticipants(participantsList);
     } catch (error) {
-      console.error('Error loading participants:', error);
       setError('Failed to load participants. Please try again.');
     }
   };
@@ -216,10 +157,12 @@ const Participants = () => {
   });
 
   const getStatusColor = (status) => {
-    switch (status) {
-      case 'active': return 'bg-green-100 text-green-800';
+    switch (status?.toLowerCase()) {
+      case 'attended': return 'bg-green-100 text-green-800';
+      case 'registered': return 'bg-blue-100 text-blue-800';
       case 'pending': return 'bg-yellow-100 text-yellow-800';
       case 'cancelled': return 'bg-red-100 text-red-800';
+      case 'active': return 'bg-green-100 text-green-800'; // Legacy support
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -233,13 +176,6 @@ const Participants = () => {
           <p className="text-gray-600 mt-1">Manage and engage with event participants</p>
         </div>
         <div className="flex space-x-3">
-          <button 
-            onClick={testParticipantsAccess}
-            className="btn-secondary flex items-center"
-          >
-            <Users size={20} className="mr-2" />
-            Test Access
-          </button>
           <button 
             onClick={loadParticipants}
             className="btn-secondary flex items-center"
@@ -288,21 +224,6 @@ const Participants = () => {
       {/* Main Content */}
       {!loading && !error && (
         <>
-          {/* Debug Info */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-medium text-blue-900">Participants Loaded</h3>
-                <p className="text-blue-600 text-sm">
-                  Found {participants?.length || 0} total participants across {(events?.length || 1) - 1} events
-                </p>
-              </div>
-              <div className="text-sm text-blue-600">
-                Showing {filteredParticipants?.length || 0} after filtering
-              </div>
-            </div>
-          </div>
-
       {/* Filters and Search */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <div className="flex flex-col lg:flex-row gap-4">
@@ -455,19 +376,19 @@ const Participants = () => {
             <Users className="text-green-600" size={32} />
           </div>
           <h3 className="text-2xl font-bold text-gray-900 mb-2">
-            {(participants || []).filter(p => p.status === 'active').length}
+            {(participants || []).filter(p => p.status === 'attended' || p.status === 'active').length}
           </h3>
-          <p className="text-sm text-gray-600">Active Participants</p>
+          <p className="text-sm text-gray-600">Attended</p>
         </div>
 
         <div className="card text-center">
-          <div className="p-3 bg-yellow-100 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-            <Users className="text-yellow-600" size={32} />
+          <div className="p-3 bg-blue-100 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+            <Users className="text-blue-600" size={32} />
           </div>
           <h3 className="text-2xl font-bold text-gray-900 mb-2">
-            {(participants || []).filter(p => p.status === 'pending').length}
+            {(participants || []).filter(p => p.status === 'registered').length}
           </h3>
-          <p className="text-sm text-gray-600">Pending Approval</p>
+          <p className="text-sm text-gray-600">Registered</p>
         </div>
 
         <div className="card text-center">

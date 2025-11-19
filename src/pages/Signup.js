@@ -12,7 +12,10 @@ const Signup = () => {
     email: '',
     phone: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    accountType: 'organizer', // Default to organizer
+    selectedCategories: [], // User's preferred event categories
+    selectedTags: [] // User's preferred tags/interests
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -140,13 +143,16 @@ const Signup = () => {
     try {
       // Use Supabase to sign up
       const { data, error } = await auth.signUp(
-        formData.email, 
+        formData.email,
         formData.password,
         {
           first_name: formData.firstName,
           middle_name: formData.middleName,
           last_name: formData.lastName,
-          phone: formData.phone
+          phone: formData.phone,
+          role: formData.accountType, // Set user role
+          selected_categories: formData.selectedCategories, // Include selected categories
+          selected_tags: formData.selectedTags // Include selected tags
         }
       );
       
@@ -157,6 +163,10 @@ const Signup = () => {
       
       // Show success state
       setIsSuccess(true);
+      
+      // Store user preferences if provided (will be saved after email confirmation)
+      // The preferences are already stored in user_metadata during signup
+      // They'll be used immediately for recommendations when user logs in
       
       // Redirect to login page after 2 seconds
       setTimeout(() => {
@@ -354,6 +364,124 @@ const Signup = () => {
                     <p className="mt-1 text-xs text-gray-500">
                       Enter exactly 11 digits (09123456789) or with country code (+639123456789)
                     </p>
+                  </div>
+
+                  {/* Account Type Selection */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                      Account Type *
+                    </label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, accountType: 'organizer' })}
+                        className={`p-4 border-2 rounded-lg transition-all text-left ${
+                          formData.accountType === 'organizer'
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="font-semibold text-gray-900 mb-1">Event Organizer</div>
+                        <div className="text-xs text-gray-600">
+                          Create and manage events, access analytics, manage participants
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, accountType: 'user' })}
+                        className={`p-4 border-2 rounded-lg transition-all text-left ${
+                          formData.accountType === 'user'
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="font-semibold text-gray-900 mb-1">Regular User</div>
+                        <div className="text-xs text-gray-600">
+                          Browse events and register as a participant
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Event Interests/Preferences Selection */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                      What events interest you? <span className="text-gray-500 text-xs">(Optional - helps us personalize recommendations)</span>
+                    </label>
+                    
+                    {/* Category Selection */}
+                    <div className="mb-4">
+                      <label className="block text-xs font-medium text-gray-600 mb-2">
+                        Preferred Categories (Select up to 3)
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        {['Academic Conference', 'Tech Summit', 'Community Event', 'Workshop', 'Seminar', 'Networking', 'Cultural Event', 'Sports Event'].map((category) => (
+                          <button
+                            key={category}
+                            type="button"
+                            onClick={() => {
+                              const current = formData.selectedCategories;
+                              if (current.includes(category)) {
+                                setFormData({ ...formData, selectedCategories: current.filter(c => c !== category) });
+                              } else if (current.length < 3) {
+                                setFormData({ ...formData, selectedCategories: [...current, category] });
+                              }
+                            }}
+                            className={`px-3 py-1.5 text-sm rounded-full border transition-all ${
+                              formData.selectedCategories.includes(category)
+                                ? 'bg-blue-100 border-blue-500 text-blue-700'
+                                : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'
+                            } ${formData.selectedCategories.length >= 3 && !formData.selectedCategories.includes(category) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            disabled={formData.selectedCategories.length >= 3 && !formData.selectedCategories.includes(category)}
+                          >
+                            {category}
+                          </button>
+                        ))}
+                      </div>
+                      {formData.selectedCategories.length > 0 && (
+                        <p className="mt-2 text-xs text-gray-500">
+                          Selected: {formData.selectedCategories.join(', ')}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Tags/Interests Input */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-2">
+                        Additional Interests/Tags (e.g., "networking", "coding", "art", "music")
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Enter tags separated by commas (e.g., networking, coding, design)"
+                        value={formData.selectedTags.join(', ')}
+                        onChange={(e) => {
+                          const tags = e.target.value.split(',').map(t => t.trim()).filter(t => t.length > 0);
+                          setFormData({ ...formData, selectedTags: tags });
+                        }}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      {formData.selectedTags.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {formData.selectedTags.map((tag, idx) => (
+                            <span
+                              key={idx}
+                              className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full flex items-center gap-1"
+                            >
+                              {tag}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setFormData({ ...formData, selectedTags: formData.selectedTags.filter((_, i) => i !== idx) });
+                                }}
+                                className="text-gray-500 hover:text-gray-700"
+                              >
+                                ×
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Password Field */}
@@ -558,8 +686,18 @@ const Signup = () => {
 
         {/* Terms and Conditions Modal */}
         {showTermsModal && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-            <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+          <div 
+            className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-[100] flex items-start justify-center pt-20 pb-10 px-4"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setShowTermsModal(false);
+              }
+            }}
+          >
+            <div 
+              className="relative p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="mt-3">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-medium text-gray-900">Terms and Conditions</h3>
@@ -618,8 +756,18 @@ const Signup = () => {
 
         {/* Privacy Policy Modal */}
         {showPrivacyModal && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-            <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+          <div 
+            className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-[100] flex items-start justify-center pt-20 pb-10 px-4"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setShowPrivacyModal(false);
+              }
+            }}
+          >
+            <div 
+              className="relative p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="mt-3">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-medium text-gray-900">Privacy Policy</h3>

@@ -185,6 +185,17 @@ export const statusService = {
     }
   },
 
+  // Get automation info
+  getAutomationInfo() {
+    return {
+      enabled: true,
+      method: 'database_trigger',
+      frequency: 'real-time',
+      description: 'Statuses update automatically based on event dates and times',
+      lastUpdate: new Date().toISOString()
+    };
+  },
+
   // Get status options for dropdown
   getStatusOptions() {
     return [

@@ -39,9 +39,7 @@ pydantic-settings==2.0.3
 email-validator==2.1.0
 
 # Security and middleware
-python-cors==1.7.0
 slowapi==0.1.9
-helmet==0.1.0
 
 # Development and testing
 pytest==7.4.3
@@ -55,3 +53,6 @@ mypy==1.7.1
 python-dateutil==2.8.2
 pytz==2023.3
 uuid==1.30
+
+# Supabase
+supabase==2.0.0

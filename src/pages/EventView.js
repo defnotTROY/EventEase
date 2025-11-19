@@ -24,6 +24,7 @@ import {
 import { auth } from '../lib/supabase';
 import { eventsService } from '../services/eventsService';
 import { statusService } from '../services/statusService';
+import { verificationService } from '../services/verificationService';
 import EventQRCodeGenerator from '../components/EventQRCodeGenerator';
 
 const EventView = () => {
@@ -36,7 +37,9 @@ const EventView = () => {
   const [participantCount, setParticipantCount] = useState(0);
   const [showQRCode, setShowQRCode] = useState(false);
   const [showRegistrationForm, setShowRegistrationForm] = useState(false);
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
   const [isRegistered, setIsRegistered] = useState(false);
+  const [isVerified, setIsVerified] = useState(null);
   const [registrationData, setRegistrationData] = useState({
     firstName: '',
     lastName: '',
@@ -44,6 +47,7 @@ const EventView = () => {
     phone: ''
   });
   const [registering, setRegistering] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Load event data
   useEffect(() => {
@@ -58,6 +62,10 @@ const EventView = () => {
           return;
         }
         setUser(user);
+        
+        // Check if user is admin
+        const adminStatus = user.user_metadata?.role === 'Administrator' || user.user_metadata?.role === 'Admin';
+        setIsAdmin(adminStatus);
 
         // Load event data
         const { data: eventData, error } = await eventsService.getEventById(id);
@@ -78,6 +86,14 @@ const EventView = () => {
         // Check if user is already registered
         const { data: registered } = await eventsService.isUserRegistered(id, user.id);
         setIsRegistered(registered);
+
+        // Check verification status (skip for admins)
+        if (!adminStatus) {
+          const verified = await verificationService.isVerified(user.id);
+          setIsVerified(verified);
+        } else {
+          setIsVerified(true); // Admins don't need verification
+        }
 
         // Pre-populate registration form with user data
         setRegistrationData({
@@ -148,6 +164,13 @@ const EventView = () => {
       return;
     }
 
+    // Double-check verification before submitting
+    if (!isAdmin && isVerified === false) {
+      setShowRegistrationForm(false);
+      setShowVerificationModal(true);
+      return;
+    }
+
     try {
       setRegistering(true);
       
@@ -179,6 +202,32 @@ const EventView = () => {
     } finally {
       setRegistering(false);
     }
+  };
+
+  const handleRegisterClick = async () => {
+    if (isAdmin) {
+      alert('Administrators cannot register for events. Admins manage the platform and should not participate as regular attendees.');
+      return;
+    }
+
+    // Check verification status before opening registration form
+    if (isVerified === false) {
+      setShowVerificationModal(true);
+      return;
+    }
+
+    // If verification status is unknown, check it
+    if (isVerified === null && user) {
+      const verified = await verificationService.isVerified(user.id);
+      setIsVerified(verified);
+      
+      if (!verified) {
+        setShowVerificationModal(true);
+        return;
+      }
+    }
+
+    setShowRegistrationForm(true);
   };
 
   const handleRegistrationInputChange = (e) => {
@@ -338,10 +387,85 @@ const EventView = () => {
           />
         )}
 
+        {/* Verification Required Modal */}
+        {showVerificationModal && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] px-4"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setShowVerificationModal(false);
+              }
+            }}
+          >
+            <div 
+              className="bg-white rounded-lg p-6 max-w-md w-full relative"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center">
+                  <AlertCircle className="text-yellow-500 mr-3" size={24} />
+                  <h3 className="text-lg font-semibold">Verification Required</h3>
+                </div>
+                <button
+                  onClick={() => setShowVerificationModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              
+              <div className="mb-6">
+                <p className="text-gray-700 mb-4">
+                  You need to verify your identity before you can register for events. This helps ensure a safe and secure experience for all participants.
+                </p>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                  <p className="text-sm text-blue-800">
+                    <strong>What you need to do:</strong>
+                  </p>
+                  <ul className="text-sm text-blue-700 mt-2 space-y-1 list-disc list-inside">
+                    <li>Go to your Settings page</li>
+                    <li>Navigate to the Verification section</li>
+                    <li>Upload a valid ID document</li>
+                    <li>Wait for admin approval (usually within 24 hours)</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setShowVerificationModal(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    setShowVerificationModal(false);
+                    navigate('/settings?tab=verification');
+                  }}
+                  className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors"
+                >
+                  Go to Verification
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Registration Form Modal */}
-        {showRegistrationForm && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+        {showRegistrationForm && !isAdmin && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] px-4"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setShowRegistrationForm(false);
+              }
+            }}
+          >
+            <div 
+              className="bg-white rounded-lg p-6 max-w-md w-full relative"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold">Register for Event</h3>
                 <button
@@ -607,10 +731,12 @@ const EventView = () => {
               </div>
               
               <button 
-                onClick={() => setShowRegistrationForm(true)}
-                disabled={isRegistered || (event.max_participants && participantCount >= event.max_participants)}
+                onClick={handleRegisterClick}
+                disabled={isAdmin || isRegistered || (event.max_participants && participantCount >= event.max_participants)}
                 className={`w-full mt-4 px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center ${
-                  isRegistered 
+                  isAdmin
+                    ? 'bg-gray-400 text-white cursor-not-allowed'
+                    : isRegistered 
                     ? 'bg-green-600 text-white cursor-not-allowed' 
                     : (event.max_participants && participantCount >= event.max_participants)
                     ? 'bg-gray-400 text-white cursor-not-allowed'
@@ -618,7 +744,9 @@ const EventView = () => {
                 }`}
               >
                 <UserPlus size={16} className="mr-2" />
-                {isRegistered 
+                {isAdmin
+                  ? 'Admins Cannot Register'
+                  : isRegistered 
                   ? 'Already Registered' 
                   : (event.max_participants && participantCount >= event.max_participants)
                   ? 'Event Full'

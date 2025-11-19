@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Search, 
@@ -32,9 +32,49 @@ const Events = () => {
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
   const [participantCounts, setParticipantCounts] = useState({});
+  const [selectedEvent, setSelectedEvent] = useState(null);
 
-  const categories = ['all', 'Tech Summit', 'Community Event', 'Academic Conference', 'Networking', 'Cultural Event', 'Workshop'];
-  const statuses = ['all', 'upcoming', 'ongoing', 'completed', 'cancelled'];
+  const statusOptions = useMemo(() => [
+    { value: 'all', label: 'All Status' },
+    ...statusService.getStatusOptions().map((option) => ({
+      value: option.value,
+      label: option.label || option.value.charAt(0).toUpperCase() + option.value.slice(1)
+    }))
+  ], []);
+
+  const categoryOptions = useMemo(() => {
+    const uniqueCategories = new Set();
+    events.forEach((event) => {
+      if (event?.category) {
+        uniqueCategories.add(event.category);
+      }
+    });
+
+    return ['all', ...Array.from(uniqueCategories).sort((a, b) => a.localeCompare(b))];
+  }, [events]);
+
+  const ensureSelectionInOptions = useCallback(() => {
+    if (selectedCategory !== 'all' && !categoryOptions.includes(selectedCategory)) {
+      setSelectedCategory('all');
+    }
+
+    if (selectedStatus !== 'all' && !statusOptions.some((option) => option.value === selectedStatus)) {
+      setSelectedStatus('all');
+    }
+  }, [categoryOptions, selectedCategory, selectedStatus, statusOptions]);
+
+  useEffect(() => {
+    ensureSelectionInOptions();
+  }, [ensureSelectionInOptions]);
+
+  const getEventImageUrl = useCallback((event, size = 400) => {
+    if (event?.image_url) {
+      return event.image_url;
+    }
+
+    const seed = encodeURIComponent(event?.title || event?.id || 'event');
+    return `https://source.boringavatars.com/marble/${size}/${seed}?colors=0D9488,14B8A6,2DD4BF,5EEAD4,99F6E4`;
+  }, []);
 
   // Auto-update all event statuses
   const handleAutoUpdateStatuses = async () => {
@@ -165,7 +205,7 @@ const Events = () => {
     const matchesSearch = event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          event.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || event.category === selectedCategory;
-    const matchesStatus = selectedStatus === 'all' || event.status === selectedStatus;
+    const matchesStatus = selectedStatus === 'all' || statusService.calculateEventStatus(event) === selectedStatus || event.status === selectedStatus;
     
     return matchesSearch && matchesCategory && matchesStatus;
   });
@@ -175,8 +215,26 @@ const Events = () => {
   };
 
   const getParticipantPercentage = (current, max) => {
-    return Math.round((current / max) * 100);
+    if (!max) return 0;
+    const percentage = Math.round((current / max) * 100);
+    return Number.isFinite(percentage) ? Math.min(Math.max(percentage, 0), 100) : 0;
   };
+
+  useEffect(() => {
+    if (viewMode !== 'list') return;
+
+    if (filteredEvents.length === 0) {
+      setSelectedEvent(null);
+      return;
+    }
+
+    setSelectedEvent((previous) => {
+      if (previous && filteredEvents.some((event) => event.id === previous.id)) {
+        return previous;
+      }
+      return filteredEvents[0];
+    });
+  }, [viewMode, filteredEvents]);
 
   if (loading) {
     return (
@@ -250,7 +308,7 @@ const Events = () => {
               onChange={(e) => setSelectedCategory(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             >
-              {categories.map(category => (
+              {categoryOptions.map(category => (
                 <option key={category} value={category}>
                   {category === 'all' ? 'All Categories' : category}
                 </option>
@@ -265,9 +323,9 @@ const Events = () => {
               onChange={(e) => setSelectedStatus(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             >
-              {statuses.map(status => (
-                <option key={status} value={status}>
-                  {status === 'all' ? 'All Status' : status.charAt(0).toUpperCase() + status.slice(1)}
+              {statusOptions.map(status => (
+                <option key={status.value} value={status.value}>
+                  {status.label}
                 </option>
               ))}
             </select>
@@ -311,7 +369,7 @@ const Events = () => {
               {/* Event Image */}
               <div className="relative h-48 bg-gray-200">
                 <img
-                  src={event.image_url || 'https://via.placeholder.com/400x250'}
+                  src={getEventImageUrl(event, 480)}
                   alt={event.title}
                   className="w-full h-full object-cover"
                 />
@@ -344,7 +402,7 @@ const Events = () => {
                   </div>
                   <div className="flex items-center text-sm text-gray-500">
                     <span className="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
-                    Status updated automatically
+                    {statusService.getAutomationInfo().description}
                   </div>
                 </div>
 
@@ -403,87 +461,231 @@ const Events = () => {
         </div>
       ) : (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Participants</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredEvents.map((event) => (
-                  <tr key={event.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
+          <div className="flex flex-col lg:flex-row">
+            <div className="lg:w-1/2 border-b lg:border-b-0 lg:border-r border-gray-200">
+              <div className="max-h-[560px] overflow-y-auto">
+                {filteredEvents.map((event) => {
+                  const isSelected = selectedEvent?.id === event.id;
+
+                  return (
+                    <div
+                      key={event.id}
+                      onClick={() => setSelectedEvent(event)}
+                      className={`px-5 py-4 cursor-pointer transition-colors flex flex-col gap-3 border-l-4 ${
+                        isSelected ? 'bg-primary-50 border-primary-500' : 'border-transparent hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="flex items-start gap-4">
                         <img
-                          src={event.image_url || 'https://via.placeholder.com/48x48'}
+                          src={getEventImageUrl(event, 160)}
                           alt={event.title}
-                          className="w-12 h-12 rounded-lg object-cover mr-4"
+                          className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
                         />
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">{event.title}</div>
-                          <div className="text-sm text-gray-500 line-clamp-1">{event.description}</div>
+                        <div className="space-y-1 flex-1">
+                          <div className="flex items-start justify-between gap-2">
+                            <h3 className="text-base font-semibold text-gray-900 line-clamp-2">
+                              {event.title}
+                            </h3>
+                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(statusService.calculateEventStatus(event))}`}>
+                              {statusService.calculateEventStatus(event)}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-600 line-clamp-2">
+                            {event.description}
+                          </p>
+                          <div className="flex flex-wrap gap-3 text-sm text-gray-500">
+                            <span className="inline-flex items-center gap-1">
+                              <Calendar size={14} />
+                              {formatDate(event.date)} • {formatTime(event.time)}
+                            </span>
+                            <span className="inline-flex items-center gap-1">
+                              <MapPin size={14} />
+                              {event.location}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between gap-4 text-sm text-gray-600">
+                            <div className="flex items-center gap-2">
+                              <Users size={14} />
+                              <span className="font-medium">
+                                {participantCounts[event.id] || 0}/{event.max_participants || '∞'}
+                              </span>
+                              {event.max_participants && (
+                                <div className="w-24 bg-gray-200 rounded-full h-2">
+                                  <div
+                                    className="bg-primary-600 h-2 rounded-full transition-all duration-300"
+                                    style={{ width: `${getParticipantPercentage(participantCounts[event.id] || 0, event.max_participants)}%` }}
+                                  ></div>
+                                </div>
+                              )}
+                            </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/events/${event.id}`);
+                              }}
+                              className="hidden sm:inline-flex items-center text-primary-600 hover:text-primary-800 text-sm font-semibold"
+                            >
+                              View Details
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatDate(event.date)} • {formatTime(event.time)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {event.location}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      <div className="flex items-center space-x-2">
-                        <span className="font-medium">{participantCounts[event.id] || 0}/{event.max_participants || '∞'}</span>
-                        {event.max_participants && (
-                          <div className="w-16 bg-gray-200 rounded-full h-2">
-                            <div 
-                              className="bg-primary-600 h-2 rounded-full transition-all duration-300"
-                              style={{ width: `${getParticipantPercentage(participantCounts[event.id] || 0, event.max_participants)}%` }}
-                            ></div>
+
+                      {isSelected && (
+                        <div className="lg:hidden border-t border-primary-100 pt-3 mt-2 space-y-3">
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <MessageSquare size={16} className="text-primary-500" />
+                            <span>Tap actions below to manage this event</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/events/${event.id}`);
+                              }}
+                              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-primary-600 rounded-lg hover:bg-primary-700"
+                            >
+                              <Eye size={16} />
+                              View
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/events/${event.id}/edit`);
+                              }}
+                              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100"
+                            >
+                              <Edit size={16} />
+                              Edit
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteEvent(event.id);
+                              }}
+                              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-red-600 bg-red-50 rounded-lg hover:bg-red-100"
+                            >
+                              <Trash2 size={16} />
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {filteredEvents.length === 0 && (
+                  <div className="px-6 py-10 text-center text-gray-500">
+                    No events match your filters right now.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="lg:w-1/2">
+              {selectedEvent ? (
+                <div className="p-6 space-y-5">
+                  <div className="relative h-56 bg-gray-100 rounded-lg overflow-hidden">
+                    <img
+                      src={getEventImageUrl(selectedEvent, 640)}
+                      alt={selectedEvent.title}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute top-4 right-4">
+                      <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(statusService.calculateEventStatus(selectedEvent))}`}>
+                        {statusService.calculateEventStatus(selectedEvent)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">{selectedEvent.title}</h2>
+                    <p className="text-gray-600 mt-2 leading-relaxed">{selectedEvent.description}</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
+                      <Calendar size={20} className="text-primary-600 mt-1" />
+                      <div>
+                        <p className="text-xs uppercase text-gray-500">Schedule</p>
+                        <p className="text-sm font-semibold text-gray-800">
+                          {formatDate(selectedEvent.date)}
+                        </p>
+                        <p className="text-sm text-gray-600">{formatTime(selectedEvent.time)}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
+                      <MapPin size={20} className="text-primary-600 mt-1" />
+                      <div>
+                        <p className="text-xs uppercase text-gray-500">Location</p>
+                        <p className="text-sm font-semibold text-gray-800">{selectedEvent.location}</p>
+                        {selectedEvent.venue_details && (
+                          <p className="text-sm text-gray-600">{selectedEvent.venue_details}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
+                      <Users size={20} className="text-primary-600 mt-1" />
+                      <div className="w-full">
+                        <p className="text-xs uppercase text-gray-500">Participants</p>
+                        <p className="text-sm font-semibold text-gray-800">
+                          {participantCounts[selectedEvent.id] || 0}/{selectedEvent.max_participants || '∞'}
+                        </p>
+                        {selectedEvent.max_participants && (
+                          <div className="mt-2">
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div
+                                className="bg-primary-600 h-2 rounded-full transition-all duration-500"
+                                style={{ width: `${getParticipantPercentage(participantCounts[selectedEvent.id] || 0, selectedEvent.max_participants)}%` }}
+                              ></div>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {participantCounts[selectedEvent.id] || 0} registered
+                            </p>
                           </div>
                         )}
                       </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(statusService.calculateEventStatus(event))}`}>
-                        {statusService.calculateEventStatus(event)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex space-x-2">
-                        <button 
-                          onClick={() => navigate(`/events/${event.id}`)}
-                          className="text-primary-600 hover:text-primary-900"
-                          title="View Event"
-                        >
-                          <Eye size={16} />
-                        </button>
-                        <button 
-                          onClick={() => navigate(`/events/${event.id}/edit`)}
-                          className="text-blue-600 hover:text-blue-900"
-                          title="Edit Event"
-                        >
-                          <Edit size={16} />
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteEvent(event.id)}
-                          className="text-red-600 hover:text-red-900"
-                          title="Delete Event"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                    </div>
+                    <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
+                      <QrCode size={20} className="text-primary-600 mt-1" />
+                      <div>
+                        <p className="text-xs uppercase text-gray-500">Status Automation</p>
+                        <p className="text-sm text-gray-600">{statusService.getAutomationInfo().description}</p>
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-3">
+                    <button
+                      onClick={() => navigate(`/events/${selectedEvent.id}`)}
+                      className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-primary-600 rounded-lg hover:bg-primary-700"
+                    >
+                      <Eye size={18} />
+                      View Full Event Page
+                    </button>
+                    <button
+                      onClick={() => navigate(`/events/${selectedEvent.id}/edit`)}
+                      className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100"
+                    >
+                      <Edit size={18} />
+                      Edit Event
+                    </button>
+                    <button
+                      onClick={() => handleDeleteEvent(selectedEvent.id)}
+                      className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-red-600 bg-red-50 rounded-lg hover:bg-red-100"
+                    >
+                      <Trash2 size={18} />
+                      Delete Event
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-10 text-center text-gray-500">
+                  Select an event from the list to preview its full details here.
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

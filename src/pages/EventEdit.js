@@ -20,6 +20,7 @@ import { auth } from '../lib/supabase';
 import { eventsService } from '../services/eventsService';
 import { storageService } from '../services/storageService';
 import { statusService } from '../services/statusService';
+import LocationSearch from '../components/LocationSearch';
 
 const EventEdit = () => {
   const navigate = useNavigate();
@@ -390,16 +391,16 @@ const EventEdit = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <MapPin className="inline mr-1" size={16} />
-                  Location
+                  Location <span className="text-xs text-gray-500 font-normal">(Philippines only)</span>
                 </label>
-                <input
-                  type="text"
-                  name="location"
+                <LocationSearch
                   value={formData.location}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  placeholder="Event location"
+                  onChange={(location) => setFormData({ ...formData, location })}
+                  placeholder="Search for specific venues, buildings, or addresses..."
                 />
+                <p className="mt-2 text-xs text-gray-500">
+                  Start typing to search for specific venues, buildings, or addresses (e.g., "SM Megamall", "Ayala Center", "123 Rizal Avenue").
+                </p>
               </div>
               
               <div>

@@ -3,6 +3,7 @@ import { Search, Bell, User, Menu, X, LogOut, Settings, Loader2 } from 'lucide-r
 import { auth } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { searchService } from '../services/searchService';
+import { notificationService } from '../services/notificationService';
 import SearchResults from './SearchResults';
 
 const Navbar = ({ onMenuClick }) => {
@@ -11,23 +12,25 @@ const Navbar = ({ onMenuClick }) => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const [searchResults, setSearchResults] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
-  const [notifications, setNotifications] = useState([
-    { id: 1, message: 'New event registration', time: '2 min ago', unread: true },
-    { id: 2, message: 'Event reminder: Tech Conference', time: '1 hour ago', unread: true },
-    { id: 3, message: 'Feedback received', time: '3 hours ago', unread: false },
-  ]);
+  const [notifications, setNotifications] = useState([]);
 
-  const unreadCount = notifications.filter(n => n.unread).length;
+  const unreadCount = notifications.filter(n => !n.read).length;
 
-  // Get current user on component mount
+  // Get current user and notifications on component mount
   useEffect(() => {
     const getCurrentUser = async () => {
       try {
         const { user } = await auth.getCurrentUser();
         setUser(user);
+        
+        // Load notifications if user is logged in
+        if (user) {
+          await loadNotifications(user.id);
+        }
       } catch (error) {
         console.error('Error getting user:', error);
       } finally {
@@ -41,10 +44,36 @@ const Navbar = ({ onMenuClick }) => {
     const { data: { subscription } } = auth.onAuthStateChange((event, session) => {
       setUser(session?.user || null);
       setIsLoading(false);
+      
+      // Load notifications when user logs in
+      if (session?.user) {
+        loadNotifications(session.user.id);
+      } else {
+        setNotifications([]);
+      }
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Load notifications
+  const loadNotifications = async (userId) => {
+    try {
+      const { data, error } = await notificationService.getNotifications(userId, {
+        limit: 20,
+        unreadOnly: false
+      });
+
+      if (error) {
+        console.error('Error loading notifications:', error);
+        return;
+      }
+
+      setNotifications(data || []);
+    } catch (error) {
+      console.error('Error loading notifications:', error);
+    }
+  };
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -55,11 +84,14 @@ const Navbar = ({ onMenuClick }) => {
       if (showSearchResults && !event.target.closest('.search-container')) {
         setShowSearchResults(false);
       }
+      if (showNotifications && !event.target.closest('.notification-container')) {
+        setShowNotifications(false);
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showUserMenu, showSearchResults]);
+  }, [showUserMenu, showSearchResults, showNotifications]);
 
   const handleLogout = async () => {
     try {
@@ -140,6 +172,85 @@ const Navbar = ({ onMenuClick }) => {
     return user.user_metadata?.role || 'Event Organizer';
   };
 
+  const handleNotificationClick = async (notification) => {
+    // Mark notification as read
+    if (!notification.read) {
+      await notificationService.markAsRead(notification.id);
+      setNotifications(prev => 
+        prev.map(n => 
+          n.id === notification.id ? { ...n, read: true, read_at: new Date().toISOString() } : n
+        )
+      );
+    }
+
+    // Navigate based on notification type or action_url
+    if (notification.action_url) {
+      navigate(notification.action_url);
+    } else if (notification.metadata?.event_id) {
+      navigate(`/events/${notification.metadata.event_id}`);
+    } else if (notification.type === 'registration') {
+      navigate('/participants');
+    } else if (notification.type === 'reminder') {
+      navigate('/events');
+    } else if (notification.type === 'feedback') {
+      navigate('/analytics');
+    } else {
+      navigate('/events');
+    }
+
+    setShowNotifications(false);
+  };
+
+  const markAllAsRead = async () => {
+    if (!user) return;
+    
+    try {
+      await notificationService.markAllAsRead(user.id);
+      setNotifications(prev => prev.map(n => ({ ...n, read: true, read_at: new Date().toISOString() })));
+    } catch (error) {
+      console.error('Error marking all as read:', error);
+    }
+  };
+
+  const getNotificationIcon = (type) => {
+    switch (type) {
+      case 'timely_suggestion':
+        return '✨';
+      case 'price_alert':
+        return '💰';
+      case 'last_chance':
+        return '⏰';
+      case 'nearby_alert':
+        return '📍';
+      case 'registration':
+        return '👤';
+      case 'reminder':
+        return '⏰';
+      case 'feedback':
+        return '💬';
+      default:
+        return '🔔';
+    }
+  };
+
+  const formatNotificationTime = (createdAt) => {
+    if (!createdAt) return '';
+    
+    const now = new Date();
+    const time = new Date(createdAt);
+    const diffMs = now - time;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} min ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    
+    return time.toLocaleDateString();
+  };
+
   return (
     <nav className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
       <div className="w-full px-4 sm:px-6 lg:px-8">
@@ -191,15 +302,92 @@ const Navbar = ({ onMenuClick }) => {
           {/* Right side */}
           <div className="flex items-center space-x-4">
             {/* Notifications */}
-            <div className="relative">
-              <button className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 relative">
+            <div className="relative notification-container">
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 relative transition-colors"
+                aria-label="Notifications"
+              >
                 <Bell size={20} />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                    {unreadCount}
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-semibold">
+                    {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 )}
               </button>
+
+              {/* Notification Dropdown */}
+              {showNotifications && (
+                <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg z-50 border border-gray-200 max-h-96 overflow-hidden flex flex-col">
+                  {/* Header */}
+                  <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between bg-gray-50">
+                    <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={markAllAsRead}
+                        className="text-xs text-primary-600 hover:text-primary-700 font-medium"
+                      >
+                        Mark all as read
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Notifications List */}
+                  <div className="overflow-y-auto max-h-80">
+                    {notifications.length > 0 ? (
+                      <div className="divide-y divide-gray-100">
+                        {notifications.map((notification) => (
+                          <button
+                            key={notification.id}
+                            onClick={() => handleNotificationClick(notification)}
+                            className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                              !notification.read ? 'bg-blue-50' : 'bg-white'
+                            }`}
+                          >
+                            <div className="flex items-start space-x-3">
+                              <div className="flex-shrink-0 mt-0.5">
+                                <span className="text-lg">{getNotificationIcon(notification.type)}</span>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className={`text-sm ${
+                                  !notification.read ? 'font-semibold text-gray-900' : 'text-gray-700'
+                                }`}>
+                                  {notification.message}
+                                </p>
+                                <p className="text-xs text-gray-500 mt-1">
+                                  {formatNotificationTime(notification.created_at)}
+                                </p>
+                              </div>
+                              {!notification.read && (
+                                <div className="flex-shrink-0">
+                                  <div className="w-2 h-2 bg-primary-600 rounded-full"></div>
+                                </div>
+                              )}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="px-4 py-8 text-center">
+                        <Bell className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+                        <p className="text-sm text-gray-500">No notifications</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Footer */}
+                  {notifications.length > 0 && (
+                    <div className="px-4 py-2 border-t border-gray-200 bg-gray-50">
+                      <button
+                        onClick={() => navigate('/settings')}
+                        className="text-xs text-primary-600 hover:text-primary-700 font-medium w-full text-center"
+                      >
+                        Notification Settings
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* User Profile */}

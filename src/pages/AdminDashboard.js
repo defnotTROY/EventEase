@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { auth } from '../lib/supabase';
 import { eventsService } from '../services/eventsService';
+import { adminService } from '../services/adminService';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -90,9 +91,14 @@ const AdminDashboard = () => {
         }
       }
 
-      // Mock data for now - in a real app, you'd fetch from user management API
-      const totalUsers = 25; // This would come from a users API
-      const recentRegistrations = 8; // This would come from recent activity API
+      // Fetch real data from admin service
+      const [totalUsers, recentRegistrationsData, recentActivityData, systemHealthData, systemAlertsData] = await Promise.all([
+        adminService.getTotalUsers(),
+        adminService.getRecentRegistrations(10),
+        adminService.getRecentActivity(10),
+        adminService.getSystemHealth(),
+        adminService.getSystemAlerts()
+      ]);
 
       setStats({
         totalUsers,
@@ -101,24 +107,28 @@ const AdminDashboard = () => {
         activeEvents,
         upcomingEvents,
         completedEvents,
-        recentRegistrations,
-        systemHealth: 'healthy'
+        recentRegistrations: recentRegistrationsData.length,
+        systemHealth: systemHealthData.status
       });
 
-      // Mock recent activity
-      setRecentActivity([
-        { id: 1, type: 'user_registration', message: 'New user registered: john.doe@email.com', time: '2 minutes ago', icon: Users },
-        { id: 2, type: 'event_created', message: 'New event created: Tech Conference 2024', time: '15 minutes ago', icon: Calendar },
-        { id: 3, type: 'participant_registered', message: '5 new participants registered for Workshop', time: '1 hour ago', icon: Users },
-        { id: 4, type: 'event_completed', message: 'Event completed: Marketing Seminar', time: '2 hours ago', icon: CheckCircle },
-        { id: 5, type: 'system_update', message: 'System maintenance completed', time: '3 hours ago', icon: Settings }
-      ]);
+      // Map activity data to include proper icons
+      const activityWithIcons = recentActivityData.map(activity => {
+        let IconComponent;
+        switch (activity.icon) {
+          case 'Users': IconComponent = Users; break;
+          case 'Calendar': IconComponent = Calendar; break;
+          case 'CheckCircle': IconComponent = CheckCircle; break;
+          case 'Settings': IconComponent = Settings; break;
+          default: IconComponent = Activity; break;
+        }
+        return {
+          ...activity,
+          icon: IconComponent
+        };
+      });
 
-      // Mock system alerts
-      setSystemAlerts([
-        { id: 1, type: 'warning', message: 'High server load detected', severity: 'medium', time: '5 minutes ago' },
-        { id: 2, type: 'info', message: 'Database backup completed successfully', severity: 'low', time: '1 hour ago' }
-      ]);
+      setRecentActivity(activityWithIcons);
+      setSystemAlerts(systemAlertsData);
 
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -189,8 +199,14 @@ const AdminDashboard = () => {
                 Refresh
               </button>
               <div className="flex items-center text-sm text-gray-600">
-                <div className="w-2 h-2 bg-green-400 rounded-full mr-2"></div>
-                System Healthy
+                <div className={`w-2 h-2 rounded-full mr-2 ${
+                  stats.systemHealth === 'healthy' ? 'bg-green-400' : 
+                  stats.systemHealth === 'degraded' ? 'bg-yellow-400' : 
+                  'bg-red-400'
+                }`}></div>
+                System {stats.systemHealth === 'healthy' ? 'Healthy' : 
+                        stats.systemHealth === 'degraded' ? 'Degraded' : 
+                        'Unhealthy'}
               </div>
             </div>
           </div>
@@ -210,9 +226,9 @@ const AdminDashboard = () => {
                 <Users className="h-6 w-6 text-blue-600" />
               </div>
             </div>
-            <div className="mt-4 flex items-center text-sm text-green-600">
-              <TrendingUp className="h-4 w-4 mr-1" />
-              <span>+12% from last month</span>
+            <div className="mt-4 flex items-center text-sm text-gray-600">
+              <Users className="h-4 w-4 mr-1" />
+              <span>All platform users</span>
             </div>
           </div>
 
@@ -226,9 +242,9 @@ const AdminDashboard = () => {
                 <Calendar className="h-6 w-6 text-green-600" />
               </div>
             </div>
-            <div className="mt-4 flex items-center text-sm text-green-600">
-              <TrendingUp className="h-4 w-4 mr-1" />
-              <span>+8% from last month</span>
+            <div className="mt-4 flex items-center text-sm text-gray-600">
+              <Calendar className="h-4 w-4 mr-1" />
+              <span>All platform events</span>
             </div>
           </div>
 
@@ -242,25 +258,25 @@ const AdminDashboard = () => {
                 <Users className="h-6 w-6 text-purple-600" />
               </div>
             </div>
-            <div className="mt-4 flex items-center text-sm text-green-600">
-              <TrendingUp className="h-4 w-4 mr-1" />
-              <span>+15% from last month</span>
+            <div className="mt-4 flex items-center text-sm text-gray-600">
+              <Activity className="h-4 w-4 mr-1" />
+              <span>Across all events</span>
             </div>
           </div>
 
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Active Events</p>
-                <p className="text-3xl font-bold text-gray-900">{stats.activeEvents}</p>
+                <p className="text-sm font-medium text-gray-600">Recent Registrations</p>
+                <p className="text-3xl font-bold text-gray-900">{stats.recentRegistrations}</p>
               </div>
               <div className="p-3 bg-yellow-100 rounded-full">
-                <Activity className="h-6 w-6 text-yellow-600" />
+                <TrendingUp className="h-6 w-6 text-yellow-600" />
               </div>
             </div>
             <div className="mt-4 flex items-center text-sm text-gray-600">
               <Clock className="h-4 w-4 mr-1" />
-              <span>Currently running</span>
+              <span>Last 10 activities</span>
             </div>
           </div>
         </div>
@@ -359,22 +375,29 @@ const AdminDashboard = () => {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
           <div className="space-y-4">
-            {recentActivity.map((activity) => {
-              const IconComponent = getActivityIcon(activity.type);
-              return (
-                <div key={activity.id} className="flex items-start space-x-3">
-                  <div className="flex-shrink-0">
-                    <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                      <IconComponent className="h-4 w-4 text-gray-600" />
+            {recentActivity.length > 0 ? (
+              recentActivity.map((activity) => {
+                const IconComponent = activity.icon || getActivityIcon(activity.type);
+                return (
+                  <div key={activity.id} className="flex items-start space-x-3">
+                    <div className="flex-shrink-0">
+                      <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                        <IconComponent className="h-4 w-4 text-gray-600" />
+                      </div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-gray-900">{activity.message}</p>
+                      <p className="text-xs text-gray-500">{activity.time}</p>
                     </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-900">{activity.message}</p>
-                    <p className="text-xs text-gray-500">{activity.time}</p>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })
+            ) : (
+              <div className="text-center py-8">
+                <Activity className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                <p className="text-sm text-gray-600">No recent activity</p>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import QRCode from 'qrcode';
+import { getQRCodeVersion } from '../config/appConfig';
 
 class QRCodeService {
   // Generate QR code for user
@@ -9,7 +10,7 @@ class QRCodeService {
         userId: userId,
         email: userEmail,
         type: 'user_profile',
-        version: '1.0' // Static version instead of timestamp
+        version: getQRCodeVersion()
       };
 
       // Convert to JSON string
@@ -44,7 +45,7 @@ class QRCodeService {
         eventId: eventId,
         eventTitle: eventTitle,
         type: 'event_checkin',
-        version: '1.0' // Static version instead of timestamp
+        version: getQRCodeVersion()
       };
 
       const qrData = JSON.stringify(eventData);

@@ -18,6 +18,7 @@ import {
   Plus
 } from 'lucide-react';
 import { auth } from '../lib/supabase';
+import { adminService } from '../services/adminService';
 
 const AdminUserManagement = () => {
   const navigate = useNavigate();
@@ -29,38 +30,7 @@ const AdminUserManagement = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
-
-  // Mock user data - in a real app, this would come from an API
-  const mockUsers = [
-    {
-      id: '1',
-      email: 'admin@eventease.com',
-      first_name: 'Admin',
-      last_name: 'User',
-      role: 'Administrator',
-      status: 'active',
-      created_at: '2024-01-15T10:30:00Z',
-      last_login: '2024-01-20T14:22:00Z',
-      phone: '+1 (555) 123-4567',
-      organization: 'EventEase Inc.',
-      events_created: 12,
-      participants_registered: 45
-    },
-    {
-      id: '2',
-      email: 'john.doe@email.com',
-      first_name: 'John',
-      last_name: 'Doe',
-      role: 'Event Organizer',
-      status: 'active',
-      created_at: '2024-01-18T09:15:00Z',
-      last_login: '2024-01-20T11:45:00Z',
-      phone: '+1 (555) 234-5678',
-      organization: 'Tech Corp',
-      events_created: 8,
-      participants_registered: 32
-    }
-  ];
+  const [totalUsersCount, setTotalUsersCount] = useState(0);
 
   useEffect(() => {
     const checkAdminAccess = async () => {
@@ -97,10 +67,29 @@ const AdminUserManagement = () => {
   const loadUsers = async () => {
     try {
       setLoading(true);
-      setUsers(mockUsers);
-      setFilteredUsers(mockUsers);
+      
+      // Fetch real users and total count in parallel
+      const [allUsers, totalCount] = await Promise.all([
+        adminService.getAllUsers(),
+        adminService.getTotalUsers()
+      ]);
+
+      // Check if current user is admin to mark them appropriately
+      if (user) {
+        allUsers.forEach(userItem => {
+          // If this user is the current admin user, mark them as Administrator
+          if (userItem.id === user.id && (user.user_metadata?.role === 'Administrator' || user.user_metadata?.role === 'Admin')) {
+            userItem.role = 'Administrator';
+          }
+        });
+      }
+
+      setUsers(allUsers);
+      setTotalUsersCount(totalCount);
     } catch (error) {
       console.error('Error loading users:', error);
+      setUsers([]);
+      setTotalUsersCount(0);
     } finally {
       setLoading(false);
     }
@@ -217,7 +206,7 @@ const AdminUserManagement = () => {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Total Users</p>
-                <p className="text-2xl font-bold text-gray-900">{users.length}</p>
+                <p className="text-2xl font-bold text-gray-900">{totalUsersCount || users.length}</p>
               </div>
             </div>
           </div>
@@ -229,7 +218,7 @@ const AdminUserManagement = () => {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Active Users</p>
-                <p className="text-2xl font-bold text-gray-900">{users.filter(u => u.status === 'active').length}</p>
+                <p className="text-2xl font-bold text-gray-900">{users.filter(u => u.status === 'active' || !u.status).length}</p>
               </div>
             </div>
           </div>
@@ -241,7 +230,7 @@ const AdminUserManagement = () => {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Administrators</p>
-                <p className="text-2xl font-bold text-gray-900">{users.filter(u => u.role === 'Administrator').length}</p>
+                <p className="text-2xl font-bold text-gray-900">{users.filter(u => u.role === 'Administrator' || u.role === 'Admin').length}</p>
               </div>
             </div>
           </div>

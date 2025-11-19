@@ -38,8 +38,9 @@ async def lifespan(app: FastAPI):
     logger.info("🚀 Starting EventEase API...")
     
     # Create database tables
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    if engine is not None:  # Only create tables if using SQLAlchemy engine
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
     logger.info("✅ Database tables created")
     
     yield
