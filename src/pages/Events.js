@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { 
   Search, 
   Filter, 
-  Plus, 
   Calendar, 
   MapPin, 
   Users, 
@@ -20,9 +19,11 @@ import { auth } from '../lib/supabase';
 import { eventsService } from '../services/eventsService';
 import { statusService } from '../services/statusService';
 import autoStatusUpdateService from '../services/autoStatusUpdateService';
+import { useToast } from '../contexts/ToastContext';
 
 const Events = () => {
   const navigate = useNavigate();
+  const toast = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
@@ -86,13 +87,13 @@ const Events = () => {
       await loadEvents();
       
       if (data.updated > 0) {
-        alert(`Updated ${data.updated} event statuses automatically.`);
+        toast.success(`Successfully updated ${data.updated} event status${data.updated === 1 ? '' : 'es'} automatically.`);
       } else {
-        alert('All event statuses are already up to date.');
+        toast.info('All event statuses are already up to date.');
       }
     } catch (error) {
       console.error('Error auto-updating event statuses:', error);
-      alert('Failed to auto-update event statuses. Please try again.');
+      toast.error('Unable to update event statuses at this time. Please try again later.');
     }
   };
 
@@ -166,7 +167,7 @@ const Events = () => {
 
   // Handle event deletion
   const handleDeleteEvent = async (eventId) => {
-    if (!window.confirm('Are you sure you want to delete this event?')) return;
+    if (!window.confirm('Are you sure you want to delete this event? This action cannot be undone.')) return;
     
     try {
       const { error } = await eventsService.deleteEvent(eventId);
@@ -176,7 +177,7 @@ const Events = () => {
       await loadEvents();
     } catch (error) {
       console.error('Error deleting event:', error);
-      alert('Failed to delete event. Please try again.');
+      toast.error('Unable to delete the event at this time. Please try again later.');
     }
   };
 
@@ -273,13 +274,6 @@ const Events = () => {
           <h1 className="text-3xl font-bold text-gray-900">Events</h1>
           <p className="text-gray-600 mt-1">Manage and monitor all your events in one place</p>
         </div>
-        <button 
-          onClick={() => navigate('/create-event')}
-          className="btn-primary flex items-center"
-        >
-          <Plus size={20} className="mr-2" />
-          Create Event
-        </button>
       </div>
 
 
@@ -698,12 +692,6 @@ const Events = () => {
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">No events found</h3>
           <p className="text-gray-500 mb-6">Try adjusting your search or filter criteria</p>
-          <button 
-            onClick={() => navigate('/create-event')}
-            className="btn-primary"
-          >
-            Create Your First Event
-          </button>
         </div>
       )}
       

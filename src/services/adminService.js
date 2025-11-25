@@ -314,16 +314,97 @@ class AdminService {
   // Get all users with their details (for User Management page)
   async getAllUsers() {
     try {
+      // Method 1: Try to use RPC function to get users from auth.users (MOST ACCURATE)
+      try {
+        const { data: rpcUsers, error: rpcError } = await supabase
+          .rpc('get_all_users');
+
+        if (!rpcError && rpcUsers && rpcUsers.length > 0) {
+          console.log('✅ Using RPC function to get users from auth.users:', rpcUsers.length);
+          
+          // Get additional stats for each user (events created, participants registered)
+          const userIds = rpcUsers.map(u => u.id);
+          
+          // Get event counts per user
+          const { data: events } = await supabase
+            .from('events')
+            .select('user_id')
+            .in('user_id', userIds);
+          
+          const eventCounts = new Map();
+          if (events) {
+            events.forEach(event => {
+              if (event.user_id) {
+                eventCounts.set(event.user_id, (eventCounts.get(event.user_id) || 0) + 1);
+              }
+            });
+          }
+
+          // Get participant counts per user
+          const { data: participants } = await supabase
+            .from('participants')
+            .select('user_id')
+            .in('user_id', userIds);
+          
+          const participantCounts = new Map();
+          if (participants) {
+            participants.forEach(participant => {
+              if (participant.user_id) {
+                participantCounts.set(participant.user_id, (participantCounts.get(participant.user_id) || 0) + 1);
+              }
+            });
+          }
+
+          // Format users with additional data
+          const formattedUsers = rpcUsers.map(user => {
+            // Normalize role names to match UI expectations
+            let role = user.role || 'organizer';
+            if (role === 'admin' || role === 'Admin') role = 'Administrator';
+            if (role === 'organizer' || role === 'Organizer') role = 'Event Organizer';
+            if (role === 'user' || role === 'User' || !role) role = 'User';
+
+            return {
+              id: user.id,
+              email: user.email || 'N/A',
+              first_name: user.first_name || 'Unknown',
+              last_name: user.last_name || 'User',
+              role: role,
+              status: user.is_active ? 'active' : 'inactive',
+              created_at: user.created_at || new Date().toISOString(),
+              last_login: user.last_sign_in_at || null,
+              phone: user.phone || '',
+              organization: user.organization || '',
+              events_created: eventCounts.get(user.id) || 0,
+              participants_registered: participantCounts.get(user.id) || 0,
+              email_confirmed: !!user.email_confirmed_at
+            };
+          });
+
+          // Sort by last login (most recent first)
+          formattedUsers.sort((a, b) => {
+            const dateA = new Date(a.last_login || a.created_at || 0);
+            const dateB = new Date(b.last_login || b.created_at || 0);
+            return dateB - dateA;
+          });
+
+          console.log(`📊 Loaded ${formattedUsers.length} users from auth.users`);
+          return formattedUsers;
+        }
+      } catch (e) {
+        console.log('RPC function not available, using fallback method...', e);
+      }
+
+      // Method 2: Fallback - Aggregate users from events and participants tables
+      console.log('⚠️ Using fallback method to aggregate users from events/participants');
       const usersMap = new Map();
 
-      // Method 1: Aggregate users from events table
+      // Get users from events table
       try {
         const { data: events, error: eventsError } = await supabase
           .from('events')
           .select('user_id, created_at, updated_at');
 
         if (!eventsError && events && events.length > 0) {
-          // Group events by user_id to get event counts and activity
           events.forEach(event => {
             if (event.user_id) {
               if (!usersMap.has(event.user_id)) {
@@ -334,16 +415,13 @@ class AdminService {
                   last_activity: event.updated_at || event.created_at
                 });
               } else {
-                // Update user info
                 const user = usersMap.get(event.user_id);
                 user.events_created = (user.events_created || 0) + 1;
-                // Update last activity if this event is more recent
                 const eventDate = new Date(event.updated_at || event.created_at);
                 const lastActivity = new Date(user.last_activity);
                 if (eventDate > lastActivity) {
                   user.last_activity = event.updated_at || event.created_at;
                 }
-                // Update first seen if this event is older
                 const firstSeen = new Date(user.first_seen);
                 if (eventDate < firstSeen) {
                   user.first_seen = event.created_at;
@@ -356,11 +434,11 @@ class AdminService {
         console.error('Error fetching users from events:', e);
       }
 
-      // Method 2: Get users from participants table
+      // Get users from participants table
       try {
         const { data: participants, error: participantsError } = await supabase
           .from('participants')
-          .select('user_id, email, first_name, last_name, created_at, registration_date, event_id');
+          .select('user_id, email, first_name, last_name, created_at, registration_date');
 
         if (!participantsError && participants && participants.length > 0) {
           participants.forEach(participant => {
@@ -374,12 +452,11 @@ class AdminService {
                   first_name: participant.first_name || '',
                   last_name: participant.last_name || '',
                   events_created: 0,
-                  participants_registered: 0,
+                  participants_registered: 1,
                   first_seen: participantDate,
                   last_activity: participantDate
                 });
               } else {
-                // Update user info if we have more details
                 const user = usersMap.get(participant.user_id);
                 user.participants_registered = (user.participants_registered || 0) + 1;
                 
@@ -387,7 +464,6 @@ class AdminService {
                 if (!user.first_name && participant.first_name) user.first_name = participant.first_name;
                 if (!user.last_name && participant.last_name) user.last_name = participant.last_name;
                 
-                // Update timestamps
                 const partDate = new Date(participantDate);
                 const lastActivity = new Date(user.last_activity);
                 if (partDate > lastActivity) {
@@ -407,7 +483,6 @@ class AdminService {
 
       // Convert map to array and format
       const usersList = Array.from(usersMap.values()).map(userData => {
-        // Try to infer role - if they created events, likely organizer; otherwise user
         const role = userData.events_created > 0 ? 'Event Organizer' : 'User';
         
         return {
@@ -416,28 +491,88 @@ class AdminService {
           first_name: userData.first_name || 'Unknown',
           last_name: userData.last_name || 'User',
           role: role,
-          status: 'active', // Default to active
+          status: 'active',
           created_at: userData.first_seen || new Date().toISOString(),
           last_login: userData.last_activity || null,
           phone: '',
           organization: '',
           events_created: userData.events_created || 0,
-          participants_registered: userData.participants_registered || 0
+          participants_registered: userData.participants_registered || 0,
+          email_confirmed: false
         };
       });
 
-      // Sort by last activity (most recent first)
       usersList.sort((a, b) => {
         const dateA = new Date(a.last_login || a.created_at || 0);
         const dateB = new Date(b.last_login || b.created_at || 0);
         return dateB - dateA;
       });
 
-      console.log(`📊 Loaded ${usersList.length} users from database`);
+      console.log(`📊 Loaded ${usersList.length} users from fallback method`);
       return usersList;
     } catch (error) {
       console.error('❌ Error getting all users:', error);
       return [];
+    }
+  }
+
+  // Update user role
+  async updateUserRole(userId, newRole) {
+    try {
+      // Update user metadata via Supabase Admin API (requires service role key)
+      // Since we're using client SDK, we'll need to use RPC function or Admin API
+      // For now, we'll create an RPC function for this
+      const { data, error } = await supabase
+        .rpc('update_user_role', { user_id: userId, new_role: newRole });
+
+      if (error) {
+        // If RPC doesn't exist, try alternative method
+        console.warn('RPC function not available, role update may require admin API');
+        throw error;
+      }
+
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error updating user role:', error);
+      throw error;
+    }
+  }
+
+  // Delete user (requires admin privileges)
+  async deleteUser(userId) {
+    try {
+      // This requires Supabase Admin API - we'll need an RPC function
+      const { data, error } = await supabase
+        .rpc('delete_user', { user_id: userId });
+
+      if (error) {
+        console.warn('RPC function not available, user deletion may require admin API');
+        throw error;
+      }
+
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      throw error;
+    }
+  }
+
+  // Update user status (active/inactive/suspended)
+  async updateUserStatus(userId, status) {
+    try {
+      // This requires updating auth.users - we'll need an RPC function
+      const { data, error } = await supabase
+        .rpc('update_user_status', { user_id: userId, status: status });
+
+      if (error) {
+        console.warn('RPC function not available, status update may require admin API');
+        throw error;
+      }
+
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error updating user status:', error);
+      throw error;
     }
   }
 

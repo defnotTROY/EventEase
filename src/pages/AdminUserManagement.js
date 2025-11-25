@@ -19,9 +19,11 @@ import {
 } from 'lucide-react';
 import { auth } from '../lib/supabase';
 import { adminService } from '../services/adminService';
+import { useToast } from '../contexts/ToastContext';
 
 const AdminUserManagement = () => {
   const navigate = useNavigate();
+  const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -31,6 +33,7 @@ const AdminUserManagement = () => {
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [totalUsersCount, setTotalUsersCount] = useState(0);
+  const [actionLoading, setActionLoading] = useState(null);
 
   useEffect(() => {
     const checkAdminAccess = async () => {
@@ -137,6 +140,8 @@ const AdminUserManagement = () => {
   };
 
   const formatDate = (dateString) => {
+    if (!dateString) return 'Never';
+    try {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
@@ -144,6 +149,93 @@ const AdminUserManagement = () => {
       hour: '2-digit',
       minute: '2-digit'
     });
+    } catch (e) {
+      return 'Invalid date';
+    }
+  };
+
+  // Calculate new users this month
+  const getNewUsersThisMonth = () => {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    return users.filter(u => {
+      if (!u.created_at) return false;
+      const createdDate = new Date(u.created_at);
+      return createdDate >= startOfMonth;
+    }).length;
+  };
+
+  // Handle role update
+  const handleUpdateRole = async (userId, currentRole) => {
+    if (!window.confirm(`Are you sure you want to change this user's role?`)) return;
+    
+    const roles = ['User', 'Event Organizer', 'Administrator'];
+    const currentIndex = roles.indexOf(currentRole);
+    const nextRole = roles[(currentIndex + 1) % roles.length];
+    
+    setActionLoading(userId);
+    try {
+      await adminService.updateUserRole(userId, nextRole.toLowerCase());
+      toast.success(`User role updated to ${nextRole}`);
+      await loadUsers();
+    } catch (error) {
+      toast.error(`Unable to update user role: ${error.message || 'An unexpected error occurred.'}`);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Handle status update
+  const handleUpdateStatus = async (userId, currentStatus) => {
+    const statusMap = {
+      'active': 'inactive',
+      'inactive': 'suspended',
+      'suspended': 'active'
+    };
+    const newStatus = statusMap[currentStatus] || 'inactive';
+    
+    if (!window.confirm(`Are you sure you want to change this user's status to ${newStatus}?`)) return;
+    
+    setActionLoading(userId);
+    try {
+      await adminService.updateUserStatus(userId, newStatus);
+      toast.success(`User status updated to ${newStatus}`);
+      await loadUsers();
+    } catch (error) {
+      toast.error(`Unable to update user status: ${error.message || 'An unexpected error occurred.'}`);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Handle user deletion
+  const handleDeleteUser = async (userId, userName) => {
+    if (!window.confirm(`Are you sure you want to delete ${userName}? This action cannot be undone.`)) return;
+    
+    setActionLoading(userId);
+    try {
+      await adminService.deleteUser(userId);
+      toast.success('User has been deleted successfully.');
+      await loadUsers();
+    } catch (error) {
+      toast.error(`Unable to delete user: ${error.message || 'An unexpected error occurred.'}`);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Handle password reset
+  const handleResetPassword = async (userEmail) => {
+    if (!window.confirm(`Send password reset email to ${userEmail}?`)) return;
+    
+    try {
+      // Use Supabase auth reset password
+      const { error } = await auth.resetPassword(userEmail);
+      if (error) throw error;
+      toast.success(`Password reset email has been sent to ${userEmail}.`);
+    } catch (error) {
+      toast.error(`Unable to send password reset email: ${error.message || 'An unexpected error occurred.'}`);
+    }
   };
 
   if (loading) {
@@ -197,6 +289,46 @@ const AdminUserManagement = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Search and Filters */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search users by name, email, or organization..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <select
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              >
+                <option value="all">All Roles</option>
+                <option value="Administrator">Administrator</option>
+                <option value="Event Organizer">Event Organizer</option>
+                <option value="User">User</option>
+              </select>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              >
+                <option value="all">All Status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="suspended">Suspended</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
         {/* Statistics */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -242,7 +374,7 @@ const AdminUserManagement = () => {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">New This Month</p>
-                <p className="text-2xl font-bold text-gray-900">3</p>
+                <p className="text-2xl font-bold text-gray-900">{getNewUsersThisMonth()}</p>
               </div>
             </div>
           </div>
@@ -275,66 +407,85 @@ const AdminUserManagement = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredUsers.map((user) => (
-                  <tr key={user.id} className="hover:bg-gray-50">
+                {filteredUsers.map((userItem) => (
+                  <tr key={userItem.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-10 w-10">
                           <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
                             <span className="text-sm font-medium text-primary-600">
-                              {user.first_name[0]}{user.last_name[0]}
+                              {userItem.first_name?.[0] || ''}{userItem.last_name?.[0] || ''}
                             </span>
                           </div>
                         </div>
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">
-                            {user.first_name} {user.last_name}
+                            {userItem.first_name || 'Unknown'} {userItem.last_name || 'User'}
                           </div>
-                          <div className="text-sm text-gray-500">{user.email}</div>
+                          <div className="text-sm text-gray-500">{userItem.email || 'N/A'}</div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleColor(user.role)}`}>
-                        {user.role}
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleColor(userItem.role)}`}>
+                        {userItem.role || 'User'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(user.status)}`}>
-                        {user.status}
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(userItem.status)}`}>
+                        {userItem.status || 'active'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {user.organization}
+                      {userItem.organization || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatDate(user.last_login)}
+                      {formatDate(userItem.last_login)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end space-x-2">
                         <button
-                          className="text-primary-600 hover:text-primary-900"
-                          title="Edit User"
+                          onClick={() => handleUpdateRole(userItem.id, userItem.role)}
+                          disabled={actionLoading === userItem.id}
+                          className="text-primary-600 hover:text-primary-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Change Role"
                         >
+                          {actionLoading === userItem.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
                           <Edit className="h-4 w-4" />
+                          )}
                         </button>
                         <button
+                          onClick={() => handleResetPassword(userItem.email)}
                           className="text-blue-600 hover:text-blue-900"
                           title="Reset Password"
                         >
                           <Mail className="h-4 w-4" />
                         </button>
                         <button
-                          className="text-yellow-600 hover:text-yellow-900"
-                          title="Deactivate User"
+                          onClick={() => handleUpdateStatus(userItem.id, userItem.status)}
+                          disabled={actionLoading === userItem.id}
+                          className="text-yellow-600 hover:text-yellow-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Change Status"
                         >
+                          {actionLoading === userItem.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
                           <UserX className="h-4 w-4" />
+                          )}
                         </button>
                         <button
-                          className="text-red-600 hover:text-red-900"
-                          title="Delete User"
+                          onClick={() => handleDeleteUser(userItem.id, `${userItem.first_name || ''} ${userItem.last_name || ''}`.trim() || 'User')}
+                          disabled={actionLoading === userItem.id || userItem.id === user?.id}
+                          className="text-red-600 hover:text-red-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                          title={userItem.id === user?.id ? "Cannot delete your own account" : "Delete User"}
                         >
+                          {actionLoading === userItem.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
                           <Trash2 className="h-4 w-4" />
+                          )}
                         </button>
                       </div>
                     </td>
@@ -342,6 +493,17 @@ const AdminUserManagement = () => {
                 ))}
               </tbody>
             </table>
+            {filteredUsers.length === 0 && (
+              <div className="text-center py-12">
+                <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600 text-lg font-medium">No users found</p>
+                <p className="text-gray-500 mt-2">
+                  {searchQuery || roleFilter !== 'all' || statusFilter !== 'all'
+                    ? 'Try adjusting your search or filters'
+                    : 'No users in the system yet'}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -168,9 +168,10 @@ const Signup = () => {
       // The preferences are already stored in user_metadata during signup
       // They'll be used immediately for recommendations when user logs in
       
-      // Redirect to login page after 2 seconds
+      // Always redirect to email verification page
+      // Supabase will send verification email and user needs to verify before logging in
       setTimeout(() => {
-        navigate('/login');
+        navigate(`/verify-email?email=${encodeURIComponent(formData.email)}`);
       }, 2000);
       
     } catch (error) {
@@ -217,7 +218,7 @@ const Signup = () => {
                     Account Created Successfully!
                   </h3>
                   <p className="text-green-700 mb-4">
-                    Welcome to EventEase! Redirecting you to the login page...
+                    Welcome to EventEase! Please complete your verification to get started. Redirecting you to verification...
                   </p>
                   <div className="flex justify-center">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600"></div>

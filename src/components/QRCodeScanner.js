@@ -9,6 +9,7 @@ import {
   Download,
   RefreshCw
 } from 'lucide-react';
+import jsqr from 'jsqr';
 import { qrCodeService } from '../services/qrCodeService';
 
 const QRCodeScanner = ({ onScan, onError, onClose }) => {
@@ -18,12 +19,18 @@ const QRCodeScanner = ({ onScan, onError, onClose }) => {
   const [hasPermission, setHasPermission] = useState(null);
   const videoRef = useRef(null);
   const streamRef = useRef(null);
+  const canvasRef = useRef(null);
+  const scanIntervalRef = useRef(null);
+  const isScanningRef = useRef(false);
 
   useEffect(() => {
     return () => {
       // Cleanup camera stream on unmount
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
+      }
+      if (scanIntervalRef.current) {
+        clearInterval(scanIntervalRef.current);
       }
     };
   }, []);
@@ -32,6 +39,7 @@ const QRCodeScanner = ({ onScan, onError, onClose }) => {
     try {
       setError(null);
       setIsScanning(true);
+      isScanningRef.current = true;
 
       // Request camera permission
       const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -47,22 +55,41 @@ const QRCodeScanner = ({ onScan, onError, onClose }) => {
       
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.play();
+        
+        // Wait for video to be ready
+        await new Promise((resolve) => {
+          if (videoRef.current.readyState >= 2) {
+            resolve();
+          } else {
+            videoRef.current.addEventListener('loadedmetadata', resolve, { once: true });
+            videoRef.current.addEventListener('loadeddata', resolve, { once: true });
+          }
+        });
+        
+        await videoRef.current.play();
+        
+        // Start detection after a short delay to ensure video is playing
+        setTimeout(() => {
+          detectQRCode();
+        }, 500);
       }
-
-      // Start QR code detection
-      detectQRCode();
 
     } catch (err) {
       console.error('Error accessing camera:', err);
       setError('Camera access denied or not available');
       setHasPermission(false);
       setIsScanning(false);
+      isScanningRef.current = false;
     }
   };
 
   const stopScanning = () => {
     setIsScanning(false);
+    isScanningRef.current = false;
+    if (scanIntervalRef.current) {
+      clearInterval(scanIntervalRef.current);
+      scanIntervalRef.current = null;
+    }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
@@ -73,21 +100,71 @@ const QRCodeScanner = ({ onScan, onError, onClose }) => {
   };
 
   const detectQRCode = () => {
-    // This is a simplified QR detection
-    // In a real implementation, you'd use a library like jsQR or quagga
-    // For now, we'll simulate detection with a manual input option
-    
-    const interval = setInterval(() => {
-      if (!isScanning) {
-        clearInterval(interval);
+    if (!videoRef.current || !canvasRef.current) {
+      console.log('Video or canvas not ready');
+      return;
+    }
+
+    // Clear any existing interval
+    if (scanIntervalRef.current) {
+      clearInterval(scanIntervalRef.current);
+    }
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const context = canvas.getContext('2d');
+
+    // Wait for video dimensions to be available
+    const checkVideoReady = () => {
+      if (video.videoWidth > 0 && video.videoHeight > 0) {
+        // Set canvas size to match video
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        
+        console.log('Starting QR detection, video size:', canvas.width, 'x', canvas.height);
+        
+        scanIntervalRef.current = setInterval(() => {
+          if (!isScanningRef.current || !video || video.readyState !== video.HAVE_ENOUGH_DATA) {
         return;
       }
       
-      // Simulate QR code detection
-      // In real implementation, this would analyze the video feed
-    }, 100);
+          try {
+            // Draw video frame to canvas
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // Get image data from canvas
+            const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+            
+            // Detect QR code using jsqr
+            const code = jsqr(imageData.data, imageData.width, imageData.height, {
+              inversionAttempts: 'dontInvert',
+            });
 
-    return () => clearInterval(interval);
+            if (code && code.data) {
+              // QR code detected!
+              console.log('QR code detected:', code.data);
+              // Temporarily pause scanning to process the QR code
+              // Don't stop completely - we'll resume after processing
+              const detectedData = code.data;
+              // Clear interval temporarily
+              if (scanIntervalRef.current) {
+                clearInterval(scanIntervalRef.current);
+                scanIntervalRef.current = null;
+              }
+              // Process the scanned data
+              processScannedData(detectedData);
+            }
+          } catch (err) {
+            console.error('Error detecting QR code:', err);
+          }
+        }, 200); // Check every 200ms
+      } else {
+        // Video not ready yet, check again
+        setTimeout(checkVideoReady, 100);
+      }
+    };
+
+    checkVideoReady();
   };
 
   const handleManualInput = () => {
@@ -97,27 +174,52 @@ const QRCodeScanner = ({ onScan, onError, onClose }) => {
     }
   };
 
-  const processScannedData = (data) => {
+  const processScannedData = async (data) => {
     try {
       const parsedData = qrCodeService.parseQRCodeData(data);
       
       if (qrCodeService.validateQRCodeData(parsedData)) {
         setScannedData(parsedData);
         setError(null);
+        
+        // Call the onScan callback
         if (onScan) {
-          onScan(parsedData);
+          await onScan(parsedData);
         }
+        
+        // After successful scan, reset scanner after a short delay to allow scanning multiple QR codes
+        setTimeout(() => {
+          setScannedData(null);
+          // Restart scanning if video is still active and scanning was enabled
+          if (videoRef.current && videoRef.current.readyState >= 2 && isScanningRef.current) {
+            detectQRCode();
+          }
+        }, 1500); // 1.5 second delay to show success, then reset
       } else {
         setError('Invalid QR code format');
         if (onError) {
           onError('Invalid QR code format');
         }
+        // Restart scanning even on error
+        setTimeout(() => {
+          setError(null);
+          if (videoRef.current && videoRef.current.readyState >= 2 && isScanningRef.current) {
+            detectQRCode();
+          }
+        }, 2000);
       }
     } catch (err) {
       setError('Failed to parse QR code data');
       if (onError) {
         onError('Failed to parse QR code data');
       }
+      // Restart scanning even on error
+      setTimeout(() => {
+        setError(null);
+        if (videoRef.current && videoRef.current.readyState >= 2 && isScanningRef.current) {
+          detectQRCode();
+        }
+      }, 2000);
     }
   };
 
@@ -190,14 +292,14 @@ const QRCodeScanner = ({ onScan, onError, onClose }) => {
                 </p>
                 <button
                   onClick={startScanning}
-                  className="btn-primary w-full"
+                  className="w-full flex items-center justify-center px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium transition-colors"
                 >
                   <Camera size={20} className="mr-2" />
                   Start Scanning
                 </button>
                 <button
                   onClick={handleManualInput}
-                  className="btn-secondary w-full mt-3"
+                  className="w-full flex items-center justify-center px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors mt-3"
                 >
                   Enter Manually
                 </button>
@@ -211,7 +313,11 @@ const QRCodeScanner = ({ onScan, onError, onClose }) => {
                   ref={videoRef}
                   className="w-full h-64 bg-gray-100 rounded-lg object-cover"
                   playsInline
+                  autoPlay
+                  muted
                 />
+                {/* Hidden canvas for QR detection */}
+                <canvas ref={canvasRef} className="hidden" />
                 <div className="absolute inset-0 border-2 border-primary-500 rounded-lg pointer-events-none">
                   <div className="absolute top-2 left-2 w-6 h-6 border-t-2 border-l-2 border-primary-500"></div>
                   <div className="absolute top-2 right-2 w-6 h-6 border-t-2 border-r-2 border-primary-500"></div>
@@ -221,10 +327,13 @@ const QRCodeScanner = ({ onScan, onError, onClose }) => {
                 <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
                   <button
                     onClick={stopScanning}
-                    className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm"
+                    className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-600"
                   >
                     Stop Scanning
                   </button>
+                </div>
+                <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-75 text-white px-4 py-2 rounded-lg text-sm">
+                  Point camera at QR code
                 </div>
               </div>
             )}

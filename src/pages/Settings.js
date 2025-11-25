@@ -18,11 +18,13 @@ import { auth } from '../lib/supabase';
 import { notificationService } from '../services/notificationService';
 import { pushNotificationService } from '../services/pushNotificationService';
 import { verificationService } from '../services/verificationService';
+import { useToast } from '../contexts/ToastContext';
 import UserQRCode from '../components/UserQRCode';
 import { Upload, FileText, CheckCircle, XCircle, Clock, AlertCircle, ShieldCheck } from 'lucide-react';
 
 const Settings = () => {
   const navigate = useNavigate();
+  const { success, error: showError, warning, info } = useToast();
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'profile');
   const [showPassword, setShowPassword] = useState(false);
@@ -228,7 +230,7 @@ const Settings = () => {
       // Send custom password change notification
       await sendPasswordChangeNotification();
       
-      alert('Password changed successfully! You should receive an email confirmation shortly.');
+      success('Your password has been changed successfully. You will receive an email confirmation shortly.');
       setPasswordData({
         currentPassword: '',
         newPassword: '',
@@ -290,11 +292,11 @@ const Settings = () => {
       if (error) throw error;
       
       console.log('Settings saved successfully');
-      alert('Settings saved successfully!');
+      success('Your settings have been saved successfully.');
       
     } catch (error) {
       console.error('Error saving settings:', error);
-      alert('Failed to save settings. Please try again.');
+      showError('Unable to save settings at this time. Please try again later.');
     } finally {
       setSaving(false);
     }
@@ -549,7 +551,7 @@ const Settings = () => {
             type="button"
             onClick={async () => {
               if (!verificationFile) {
-                alert('Please select a file to upload');
+                warning('Please select a file to upload for verification.');
                 return;
               }
 
@@ -566,10 +568,10 @@ const Settings = () => {
                 setVerification(data);
                 setVerificationFile(null);
                 setVerificationFilePreview(null);
-                alert('Verification document uploaded successfully! It will be reviewed by an administrator.');
+                success('Your verification document has been uploaded successfully. It will be reviewed by an administrator, typically within 24 hours.');
               } catch (error) {
                 console.error('Error uploading verification:', error);
-                alert(error.message || 'Failed to upload verification document. Please try again.');
+                showError(error.message || 'Unable to upload verification document at this time. Please ensure the file is valid and try again.');
               } finally {
                 setVerificationLoading(false);
               }
@@ -599,10 +601,10 @@ const Settings = () => {
                   const { error } = await verificationService.deleteVerification(verification.id, user.id);
                   if (error) throw error;
                   setVerification(null);
-                  alert('Verification deleted successfully. You can upload a new one.');
+                  success('Verification deleted successfully. You can upload a new one.');
                 } catch (error) {
                   console.error('Error deleting verification:', error);
-                  alert('Failed to delete verification. Please try again.');
+                  showError('Failed to delete verification. Please try again.');
                 }
               }}
               className="btn-secondary w-full"
@@ -1021,7 +1023,7 @@ const Settings = () => {
                     type="button"
                     onClick={async () => {
                       if (!verificationFile) {
-                        alert('Please select a file to upload');
+                        warning('Please select a file to upload for verification.');
                         return;
                       }
 
@@ -1038,10 +1040,10 @@ const Settings = () => {
                         setVerification(data);
                         setVerificationFile(null);
                         setVerificationFilePreview(null);
-                        alert('Verification document uploaded successfully! It will be reviewed by an administrator.');
+                        success('Your verification document has been uploaded successfully. It will be reviewed by an administrator, typically within 24 hours.');
                       } catch (error) {
                         console.error('Error uploading verification:', error);
-                        alert(error.message || 'Failed to upload verification document. Please try again.');
+                        showError(error.message || 'Unable to upload verification document at this time. Please ensure the file is valid and try again.');
                       } finally {
                         setVerificationLoading(false);
                       }
@@ -1063,7 +1065,7 @@ const Settings = () => {
                     <button
                       type="button"
                       onClick={async () => {
-                        if (!window.confirm('Are you sure you want to delete your current verification? You can upload a new one after deletion.')) {
+                        if (!window.confirm('Are you sure you want to delete your current verification? This action cannot be undone. You can upload a new verification document after deletion.')) {
                           return;
                         }
 
@@ -1071,10 +1073,10 @@ const Settings = () => {
                           const { error } = await verificationService.deleteVerification(verification.id, user.id);
                           if (error) throw error;
                           setVerification(null);
-                          alert('Verification deleted successfully. You can upload a new one.');
+                          success('Your verification has been deleted successfully. You can now upload a new verification document.');
                         } catch (error) {
                           console.error('Error deleting verification:', error);
-                          alert('Failed to delete verification. Please try again.');
+                          showError('Unable to delete verification at this time. Please try again later.');
                         }
                       }}
                       className="btn-secondary w-full"
@@ -1133,11 +1135,11 @@ const Settings = () => {
                           try {
                             await pushNotificationService.subscribe(user.id);
                             setPushNotificationEnabled(true);
-                            alert('Push notifications enabled successfully!');
+                            success('Push notifications have been enabled successfully.');
                           } catch (error) {
                             console.error('Error enabling push notifications:', error);
                             handleInputChange('notifications', key, false);
-                            alert('Failed to enable push notifications. Please check your browser settings.');
+                            showError('Unable to enable push notifications. Please check your browser settings and ensure notifications are allowed for this site.');
                           }
                         } else if (key === 'pushNotifications' && !newValue && pushNotificationEnabled) {
                           try {

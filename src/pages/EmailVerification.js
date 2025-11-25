@@ -1,0 +1,229 @@
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Mail, CheckCircle, Loader2, RefreshCw, ArrowRight } from 'lucide-react';
+import { auth, supabase } from '../lib/supabase';
+import { appConfig } from '../config/appConfig';
+import { useToast } from '../contexts/ToastContext';
+
+const EmailVerification = () => {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const toast = useToast();
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isVerified, setIsVerified] = useState(false);
+  const [email, setEmail] = useState('');
+  const [isResending, setIsResending] = useState(false);
+
+  // Check if this is a callback from email verification link
+  useEffect(() => {
+    const checkVerification = async () => {
+      try {
+        // Supabase email verification uses hash fragments (#) in the URL
+        // Check for hash fragments first (from email link)
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const accessToken = hashParams.get('access_token');
+        const type = hashParams.get('type');
+        
+        // Also check query params (fallback)
+        const token = searchParams.get('token') || hashParams.get('token');
+        const queryType = searchParams.get('type') || type;
+        
+        if ((accessToken || token) && (queryType === 'signup' || type === 'signup')) {
+          setIsVerifying(true);
+          
+          // Supabase automatically handles the session when user clicks email link
+          // Just check if user is now authenticated and email is confirmed
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+          
+          if (sessionError) {
+            console.error('Session error:', sessionError);
+            toast.error('Verification failed. Please try again or request a new verification email.');
+            setIsVerifying(false);
+            return;
+          }
+
+          if (session?.user?.email_confirmed_at) {
+            // Success! Email is verified
+            setIsVerified(true);
+            setIsVerifying(false);
+            
+            // Sign out the user (they'll need to log in)
+            await auth.signOut();
+            
+            // Redirect to login with success message after a short delay
+            setTimeout(() => {
+              navigate('/login?verified=success');
+            }, 2000);
+          } else {
+            // Token present but not verified yet, wait a bit and check again
+            setTimeout(async () => {
+              const { data: { session: newSession } } = await supabase.auth.getSession();
+              if (newSession?.user?.email_confirmed_at) {
+                setIsVerified(true);
+                setIsVerifying(false);
+                await auth.signOut();
+                setTimeout(() => {
+                  navigate('/login?verified=success');
+                }, 2000);
+              } else {
+                toast.error('Verification failed. Please try again or request a new verification email.');
+                setIsVerifying(false);
+              }
+            }, 1000);
+          }
+        } else {
+          // No token, just show the waiting page
+          // Try to get email from URL or session
+          const emailParam = searchParams.get('email') || hashParams.get('email');
+          if (emailParam) {
+            setEmail(emailParam);
+          } else {
+            // Try to get from current session
+            const { user } = await auth.getCurrentUser();
+            if (user) {
+              setEmail(user.email);
+              // If user is already verified, redirect to login
+              if (user.email_confirmed_at) {
+                navigate('/login?verified=success');
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error checking verification:', error);
+        setIsVerifying(false);
+      }
+    };
+
+    checkVerification();
+  }, [searchParams, navigate, toast]);
+
+  const handleResendEmail = async () => {
+    if (!email) {
+      toast.error('Email address not found. Please sign up again.');
+      return;
+    }
+
+    setIsResending(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email
+      });
+
+      if (error) {
+        toast.error(`Unable to resend verification email: ${error.message}`);
+      } else {
+        toast.success('Verification email has been resent. Please check your inbox.');
+      }
+    } catch (error) {
+      toast.error('Unable to resend verification email. Please try again later.');
+    } finally {
+      setIsResending(false);
+    }
+  };
+
+  if (isVerifying) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
+          <Loader2 className="h-16 w-16 animate-spin text-primary-600 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Verifying Your Email</h2>
+          <p className="text-gray-600">Please wait while we verify your email address...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isVerified) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center px-4">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
+          <div className="mb-6">
+            <div className="h-16 w-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CheckCircle className="h-10 w-10 text-green-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Email Verified!</h2>
+            <p className="text-gray-600">Your email has been successfully verified. Redirecting to login...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4">
+      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="h-16 w-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Mail className="h-10 w-10 text-blue-600" />
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Verify Your Email</h1>
+          <p className="text-gray-600">
+            We've sent a verification email to <span className="font-semibold text-gray-900">{email || 'your email address'}</span>
+          </p>
+        </div>
+
+        {/* Instructions */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
+          <h3 className="font-semibold text-gray-900 mb-3">Next Steps:</h3>
+          <ol className="space-y-2 text-sm text-gray-700">
+            <li className="flex items-start">
+              <span className="font-bold text-blue-600 mr-2">1.</span>
+              <span>Check your email inbox (and spam folder)</span>
+            </li>
+            <li className="flex items-start">
+              <span className="font-bold text-blue-600 mr-2">2.</span>
+              <span>Click the verification link in the email</span>
+            </li>
+            <li className="flex items-start">
+              <span className="font-bold text-blue-600 mr-2">3.</span>
+              <span>You'll be redirected to login once verified</span>
+            </li>
+          </ol>
+        </div>
+
+        {/* Resend Email */}
+        <div className="space-y-4">
+          <button
+            onClick={handleResendEmail}
+            disabled={isResending || !email}
+            className="w-full flex items-center justify-center px-4 py-3 bg-white border-2 border-gray-300 rounded-lg hover:border-primary-500 hover:text-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isResending ? (
+              <>
+                <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                Sending...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="h-5 w-5 mr-2" />
+                Resend Verification Email
+              </>
+            )}
+          </button>
+
+          <Link
+            to="/login"
+            className="block w-full text-center px-4 py-3 text-gray-600 hover:text-gray-900 transition-colors"
+          >
+            Back to Login
+          </Link>
+        </div>
+
+        {/* Help Text */}
+        <div className="mt-8 pt-6 border-t border-gray-200">
+          <p className="text-xs text-gray-500 text-center">
+            Didn't receive the email? Check your spam folder or try resending.
+            <br />
+            If you continue to have issues, please contact support.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default EmailVerification;
+

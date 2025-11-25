@@ -25,11 +25,14 @@ import { auth } from '../lib/supabase';
 import { eventsService } from '../services/eventsService';
 import { statusService } from '../services/statusService';
 import { verificationService } from '../services/verificationService';
+import { isOrganizer } from '../services/roleService';
+import { useToast } from '../contexts/ToastContext';
 import EventQRCodeGenerator from '../components/EventQRCodeGenerator';
 
 const EventView = () => {
   const navigate = useNavigate();
   const { id } = useParams();
+  const toast = useToast();
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -48,6 +51,7 @@ const EventView = () => {
   });
   const [registering, setRegistering] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isOrganizerUser, setIsOrganizerUser] = useState(false);
 
   // Load event data
   useEffect(() => {
@@ -66,6 +70,9 @@ const EventView = () => {
         // Check if user is admin
         const adminStatus = user.user_metadata?.role === 'Administrator' || user.user_metadata?.role === 'Admin';
         setIsAdmin(adminStatus);
+        
+        // Check if user is organizer
+        setIsOrganizerUser(isOrganizer(user));
 
         // Load event data
         const { data: eventData, error } = await eventsService.getEventById(id);
@@ -117,7 +124,8 @@ const EventView = () => {
   }, [id, navigate]);
 
   const handleDeleteEvent = async () => {
-    if (!window.confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
+    const confirmed = await toast.confirm('Are you sure you want to delete this event? This action cannot be undone.');
+    if (!confirmed) {
       return;
     }
 
@@ -128,7 +136,7 @@ const EventView = () => {
       navigate('/events');
     } catch (error) {
       console.error('Error deleting event:', error);
-      alert('Failed to delete event. Please try again.');
+      toast.error('Unable to delete the event at this time. Please try again later.');
     }
   };
 
@@ -149,7 +157,7 @@ const EventView = () => {
       // Fallback: copy to clipboard
       try {
         await navigator.clipboard.writeText(eventUrl);
-        alert('Event link copied to clipboard!');
+        toast.success('Event link has been copied to your clipboard.');
       } catch (error) {
         console.error('Failed to copy to clipboard:', error);
       }
@@ -160,7 +168,7 @@ const EventView = () => {
     e.preventDefault();
     
     if (!registrationData.firstName || !registrationData.lastName || !registrationData.email) {
-      alert('Please fill in all required fields');
+        toast.warning('Please complete all required fields before submitting.');
       return;
     }
 
@@ -194,11 +202,11 @@ const EventView = () => {
       // Close form
       setShowRegistrationForm(false);
       
-      alert('Successfully registered for the event!');
+      toast.success('You have been successfully registered for this event!');
       
     } catch (error) {
       console.error('Error registering for event:', error);
-      alert(error.message || 'Failed to register for event. Please try again.');
+      toast.error(error.message || 'Unable to complete registration at this time. Please try again later.');
     } finally {
       setRegistering(false);
     }
@@ -206,7 +214,12 @@ const EventView = () => {
 
   const handleRegisterClick = async () => {
     if (isAdmin) {
-      alert('Administrators cannot register for events. Admins manage the platform and should not participate as regular attendees.');
+      toast.info('Administrators cannot register for events. As a platform administrator, you manage events rather than participate as an attendee.');
+      return;
+    }
+
+    if (isOrganizerUser) {
+      toast.info('Event organizers cannot register for events. As an organizer, you create and manage events rather than participate as an attendee.');
       return;
     }
 
@@ -730,29 +743,32 @@ const EventView = () => {
                 </div>
               </div>
               
-              <button 
-                onClick={handleRegisterClick}
-                disabled={isAdmin || isRegistered || (event.max_participants && participantCount >= event.max_participants)}
-                className={`w-full mt-4 px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center ${
-                  isAdmin
-                    ? 'bg-gray-400 text-white cursor-not-allowed'
-                    : isRegistered 
-                    ? 'bg-green-600 text-white cursor-not-allowed' 
+              {(isAdmin || isOrganizerUser) ? (
+                <div className="w-full mt-4 px-4 py-2 rounded-lg font-medium bg-gray-400 text-white cursor-not-allowed flex items-center justify-center">
+                  <UserPlus size={16} className="mr-2" />
+                  {isAdmin ? 'Admins Cannot Register' : 'Organizers Cannot Register'}
+                </div>
+              ) : (
+                <button 
+                  onClick={handleRegisterClick}
+                  disabled={isRegistered || (event.max_participants && participantCount >= event.max_participants)}
+                  className={`w-full mt-4 px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center ${
+                    isRegistered 
+                      ? 'bg-green-600 text-white cursor-not-allowed' 
+                      : (event.max_participants && participantCount >= event.max_participants)
+                      ? 'bg-gray-400 text-white cursor-not-allowed'
+                      : 'bg-primary-600 text-white hover:bg-primary-700'
+                  }`}
+                >
+                  <UserPlus size={16} className="mr-2" />
+                  {isRegistered 
+                    ? 'Already Registered' 
                     : (event.max_participants && participantCount >= event.max_participants)
-                    ? 'bg-gray-400 text-white cursor-not-allowed'
-                    : 'bg-primary-600 text-white hover:bg-primary-700'
-                }`}
-              >
-                <UserPlus size={16} className="mr-2" />
-                {isAdmin
-                  ? 'Admins Cannot Register'
-                  : isRegistered 
-                  ? 'Already Registered' 
-                  : (event.max_participants && participantCount >= event.max_participants)
-                  ? 'Event Full'
-                  : 'Register for Event'
-                }
-              </button>
+                    ? 'Event Full'
+                    : 'Register for Event'
+                  }
+                </button>
+              )}
             </div>
           </div>
         </div>

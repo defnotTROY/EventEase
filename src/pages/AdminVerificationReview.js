@@ -17,9 +17,11 @@ import {
 import { auth } from '../lib/supabase';
 import { verificationService } from '../services/verificationService';
 import { storageService } from '../services/storageService';
+import { useToast } from '../contexts/ToastContext';
 
 const AdminVerificationReview = () => {
   const navigate = useNavigate();
+  const { success, error: showError, warning } = useToast();
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -125,7 +127,7 @@ const AdminVerificationReview = () => {
       setDocumentUrl(url);
     } catch (error) {
       console.error('Error loading document:', error);
-      alert('Failed to load document. Please try again.');
+      showError('Unable to load the verification document at this time. Please try again later.');
     } finally {
       setLoadingDocument(false);
     }
@@ -133,12 +135,12 @@ const AdminVerificationReview = () => {
 
   const handleReview = async () => {
     if (!selectedVerification || !reviewData.action) {
-      alert('Please select an action (Approve or Reject)');
+      warning('Please select an action: Approve or Reject.');
       return;
     }
 
     if (reviewData.action === 'reject' && !reviewData.rejectionReason.trim()) {
-      alert('Please provide a reason for rejection');
+      warning('Please provide a reason for rejecting this verification.');
       return;
     }
 
@@ -174,10 +176,10 @@ const AdminVerificationReview = () => {
       });
       setDocumentUrl(null);
       
-      alert(`Verification ${reviewData.action === 'approve' ? 'approved' : 'rejected'} successfully!`);
+      success(`Verification has been ${reviewData.action === 'approve' ? 'approved' : 'rejected'} successfully.`);
     } catch (error) {
       console.error('Error reviewing verification:', error);
-      alert(`Failed to ${reviewData.action} verification. Please try again.`);
+      showError(`Unable to ${reviewData.action} verification at this time. Please try again later.`);
     } finally {
       setProcessing(false);
     }

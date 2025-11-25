@@ -23,7 +23,8 @@ export const auth = {
       email,
       password,
       options: {
-        data: userData // Additional user metadata
+        data: userData, // Additional user metadata
+        emailRedirectTo: `${window.location.origin}/verify-email?email=${encodeURIComponent(email)}`
       }
     })
     return { data, error }

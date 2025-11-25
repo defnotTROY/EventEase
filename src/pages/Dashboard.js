@@ -6,10 +6,7 @@ import {
   TrendingUp, 
   Clock, 
   MapPin, 
-  QrCode, 
-  MessageSquare, 
   BarChart3,
-  Plus,
   Eye,
   Edit,
   Trash2,
@@ -17,7 +14,10 @@ import {
 } from 'lucide-react';
 import { auth } from '../lib/supabase';
 import { dashboardService } from '../services/dashboardService';
+import { scheduleService } from '../services/scheduleService';
 import AIRecommendations from '../components/AIRecommendations';
+import UserSchedule from '../components/UserSchedule';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -32,6 +32,8 @@ const Dashboard = () => {
   const [recentActivities, setRecentActivities] = useState([]);
   const [allEvents, setAllEvents] = useState([]);
   const [insights, setInsights] = useState([]);
+  const [scheduleData, setScheduleData] = useState([]);
+  const [dataLoading, setDataLoading] = useState(false);
 
   // Load dashboard data
   useEffect(() => {
@@ -105,20 +107,26 @@ const Dashboard = () => {
   const loadData = async () => {
     try {
       setError(null);
+      setDataLoading(true);
 
-      // Load all data in parallel
+      // Get user role for schedule
+      const userRole = user?.user_metadata?.role || 'user';
+
+      // Load all data in parallel (including schedule)
       const [
         dashboardStats,
         upcomingEventsData,
         recentActivitiesData,
         allEventsData,
-        insightsData
+        insightsData,
+        scheduleDataResult
       ] = await Promise.all([
         dashboardService.getDashboardStats(),
         dashboardService.getUpcomingEvents(5),
         dashboardService.getRecentActivities(10),
         dashboardService.getAllEvents(),
-        dashboardService.getDashboardInsights()
+        dashboardService.getDashboardInsights(),
+        scheduleService.getUserSchedule(user?.id, userRole)
       ]);
 
       // Format stats for display
@@ -158,20 +166,19 @@ const Dashboard = () => {
       setRecentActivities(recentActivitiesData);
       setAllEvents(allEventsData);
       setInsights(insightsData);
+      setScheduleData(scheduleDataResult);
 
     } catch (error) {
       console.error('Error loading dashboard data:', error);
       setError('Failed to load dashboard data. Please try again.');
+    } finally {
+      setDataLoading(false);
     }
   };
 
   // Show loading state while checking authentication
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-      </div>
-    );
+    return <LoadingSpinner fullScreen size="lg" text="Loading dashboard..." />;
   }
 
   return (
@@ -183,15 +190,6 @@ const Dashboard = () => {
           <p className="text-gray-600 mt-1">
             Welcome back{user?.user_metadata?.first_name ? `, ${user.user_metadata.first_name}` : ''}! Here's what's happening with events around you.
           </p>
-        </div>
-        <div className="flex items-center space-x-3">
-          <button 
-            onClick={() => navigate('/create-event')}
-            className="btn-primary flex items-center"
-          >
-            <Plus size={20} className="mr-2" />
-            Create New Event
-          </button>
         </div>
       </div>
 
@@ -252,6 +250,11 @@ const Dashboard = () => {
               {/* AI Recommendations */}
               <div className="mb-6">
                 <AIRecommendations user={user} />
+              </div>
+
+              {/* User Schedule */}
+              <div className="mb-6">
+                <UserSchedule scheduleData={scheduleData} user={user} />
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -400,7 +403,7 @@ const Dashboard = () => {
                     ) : (
                       <tr>
                         <td colSpan="5" className="px-6 py-12 text-center text-gray-500">
-                          No events found. <Link to="/create-event" className="text-primary-600 hover:text-primary-800">Create your first event</Link>
+                          No events found.
                         </td>
                       </tr>
                     )}
@@ -447,32 +450,6 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-6">
-        <div className="card text-center hover:shadow-md transition-shadow cursor-pointer">
-          <div className="p-4 bg-primary-100 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-            <QrCode className="text-primary-600" size={32} />
-          </div>
-          <h3 className="font-semibold text-gray-900 mb-2">QR Check-in</h3>
-          <p className="text-sm text-gray-600">Generate QR codes for event attendance</p>
-        </div>
-
-        <div className="card text-center hover:shadow-md transition-shadow cursor-pointer">
-          <div className="p-4 bg-green-100 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-            <MessageSquare className="text-green-600" size={32} />
-          </div>
-          <h3 className="font-semibold text-gray-900 mb-2">Live Engagement</h3>
-          <p className="text-sm text-gray-600">Create polls and Q&A sessions</p>
-        </div>
-
-        <div className="card text-center hover:shadow-md transition-shadow cursor-pointer">
-          <div className="p-4 bg-purple-100 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-            <BarChart3 className="text-purple-600" size={32} />
-          </div>
-          <h3 className="font-semibold text-gray-900 mb-2">Analytics Report</h3>
-          <p className="text-sm text-gray-600">View detailed event performance metrics</p>
-        </div>
-      </div>
     </div>
   );
 };

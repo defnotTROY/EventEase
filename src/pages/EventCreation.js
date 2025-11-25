@@ -18,18 +18,22 @@ import {
   Plus,
   Trash2,
   Edit2,
-  DollarSign
+  DollarSign,
+  AlertCircle
 } from 'lucide-react';
 import { auth } from '../lib/supabase';
 import { eventsService } from '../services/eventsService';
 import { storageService } from '../services/storageService';
 import { statusService } from '../services/statusService';
 import { ticketService } from '../services/ticketService';
-import { canCreateEvents } from '../services/roleService';
+import { canCreateEvents, isOrganizer } from '../services/roleService';
+import { verificationService } from '../services/verificationService';
+import { useToast } from '../contexts/ToastContext';
 import LocationSearch from '../components/LocationSearch';
 
 const EventCreation = () => {
   const navigate = useNavigate();
+  const { error: showError } = useToast();
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -44,7 +48,8 @@ const EventCreation = () => {
     virtualLink: '',
     requirements: '',
     contactEmail: '',
-    contactPhone: ''
+    contactPhone: '',
+    eventType: 'free' // 'free' or 'paid'
   });
 
   const [aiSuggestions, setAiSuggestions] = useState([
@@ -80,6 +85,8 @@ const EventCreation = () => {
     isVisible: true,
     sortOrder: '0'
   });
+  const [isVerified, setIsVerified] = useState(null);
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
 
   const categories = [
     'Academic Conference',
@@ -107,8 +114,21 @@ const EventCreation = () => {
         // Check if user can create events
         if (!canCreateEvents(user)) {
           navigate('/events', { replace: true });
-          alert('You need to be an Event Organizer to create events.');
+          showError('Only event organizers can create events. Please contact an administrator if you need organizer access.');
           return;
+        }
+
+        // Check verification status for organizers (admins don't need verification)
+        const adminStatus = user.user_metadata?.role === 'Administrator' || user.user_metadata?.role === 'Admin';
+        if (isOrganizer(user) && !adminStatus) {
+          const verified = await verificationService.isVerified(user.id);
+          setIsVerified(verified);
+          
+          if (!verified) {
+            setShowVerificationModal(true);
+          }
+        } else {
+          setIsVerified(true); // Admins don't need verification
         }
       } catch (error) {
         console.error('Error getting user:', error);
@@ -189,9 +209,36 @@ const EventCreation = () => {
       return;
     }
 
+    // Check verification status for organizers
+    const adminStatus = user.user_metadata?.role === 'Administrator' || user.user_metadata?.role === 'Admin';
+    if (isOrganizer(user) && !adminStatus) {
+      if (isVerified === false) {
+        setShowVerificationModal(true);
+        setError('Please verify your identity before creating events.');
+        return;
+      }
+      
+      // Double-check verification status
+      if (isVerified === null) {
+        const verified = await verificationService.isVerified(user.id);
+        setIsVerified(verified);
+        if (!verified) {
+          setShowVerificationModal(true);
+          setError('Please verify your identity before creating events.');
+          return;
+        }
+      }
+    }
+
     // Validate required fields
     if (!formData.title || !formData.description || !formData.date || !formData.time || !formData.location || !formData.category) {
       setError('Please fill in all required fields');
+      return;
+    }
+
+    // Validate paid events must have at least one ticket
+    if (formData.eventType === 'paid' && tickets.length === 0) {
+      setError('Paid events require at least one ticket type. Please add a ticket or change to a free event.');
       return;
     }
 
@@ -230,7 +277,8 @@ const EventCreation = () => {
         contact_email: formData.contactEmail || null,
         contact_phone: formData.contactPhone || null,
         tags: formData.tags.length > 0 ? formData.tags : null,
-        image_url: imageUrl
+        image_url: imageUrl,
+        event_type: formData.eventType || 'free' // Save event type (free/paid)
       };
 
       // Create event in Supabase
@@ -530,6 +578,66 @@ const EventCreation = () => {
                 <h3 className="text-lg font-semibold text-gray-900">Tickets & Pricing</h3>
                 <p className="text-sm text-gray-600 mt-1">Set up ticket types and prices for your event</p>
               </div>
+            </div>
+
+            {/* Event Type Selection (Free/Paid) */}
+            <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
+              <label className="block text-sm font-medium text-gray-700 mb-4">
+                Event Type *
+              </label>
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFormData({ ...formData, eventType: 'free' });
+                    // Clear tickets if switching to free
+                    if (formData.eventType === 'paid') {
+                      setTickets([]);
+                      setShowTicketForm(false);
+                    }
+                  }}
+                  className={`p-4 rounded-lg border-2 transition-all ${
+                    formData.eventType === 'free'
+                      ? 'border-primary-500 bg-primary-50'
+                      : 'border-gray-200 bg-white hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-center mb-2">
+                    <Ticket className={`h-8 w-8 ${formData.eventType === 'free' ? 'text-primary-600' : 'text-gray-400'}`} />
+                  </div>
+                  <h4 className={`font-semibold text-center ${formData.eventType === 'free' ? 'text-primary-900' : 'text-gray-700'}`}>
+                    Free Event
+                  </h4>
+                  <p className="text-xs text-gray-600 text-center mt-1">No payment required</p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFormData({ ...formData, eventType: 'paid' });
+                  }}
+                  className={`p-4 rounded-lg border-2 transition-all ${
+                    formData.eventType === 'paid'
+                      ? 'border-primary-500 bg-primary-50'
+                      : 'border-gray-200 bg-white hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-center mb-2">
+                    <DollarSign className={`h-8 w-8 ${formData.eventType === 'paid' ? 'text-primary-600' : 'text-gray-400'}`} />
+                  </div>
+                  <h4 className={`font-semibold text-center ${formData.eventType === 'paid' ? 'text-primary-900' : 'text-gray-700'}`}>
+                    Paid Event
+                  </h4>
+                  <p className="text-xs text-gray-600 text-center mt-1">Requires ticket purchase</p>
+                </button>
+              </div>
+            </div>
+
+            {/* Ticket Management (only for paid events) */}
+            {formData.eventType === 'paid' && (
+              <>
+                <div className="flex justify-between items-center">
+                  <p className="text-sm text-gray-600">Add ticket types for your paid event</p>
               <button
                 type="button"
                 onClick={() => {
@@ -557,6 +665,8 @@ const EventCreation = () => {
                 Add Ticket Type
               </button>
             </div>
+              </>
+            )}
 
             {showTicketForm && (
               <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
@@ -855,11 +965,17 @@ const EventCreation = () => {
               </div>
             )}
 
-            {tickets.length === 0 && (
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  <strong>Tip:</strong> You can add tickets later by editing the event. If this is a free event, you can skip this step.
-                </p>
+            {formData.eventType === 'paid' && tickets.length === 0 && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-sm text-yellow-800">
+                <AlertCircle className="h-4 w-4 inline mr-2" />
+                <strong>Note:</strong> You need to add at least one ticket type for paid events. Click "Add Ticket Type" above to get started.
+              </div>
+            )}
+            
+            {formData.eventType === 'free' && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-sm text-green-800">
+                <CheckCircle className="h-4 w-4 inline mr-2" />
+                This is a free event. No tickets are required. Participants can register directly.
               </div>
             )}
           </div>
@@ -1142,6 +1258,71 @@ const EventCreation = () => {
             </div>
           </div>
         </form>
+
+        {/* Verification Required Modal */}
+        {showVerificationModal && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] px-4"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setShowVerificationModal(false);
+              }
+            }}
+          >
+            <div
+              className="bg-white rounded-lg p-6 max-w-md w-full relative"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center">
+                  <AlertCircle className="text-yellow-500 mr-3" size={24} />
+                  <h3 className="text-lg font-semibold">Verification Required</h3>
+                </div>
+                <button
+                  onClick={() => setShowVerificationModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              
+              <div className="mb-6">
+                <p className="text-gray-700 mb-4">
+                  You need to verify your identity before you can create events. This helps ensure a safe and secure experience for all participants.
+                </p>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                  <p className="text-sm text-blue-800">
+                    <strong>What you need to do:</strong>
+                  </p>
+                  <ul className="text-sm text-blue-700 mt-2 space-y-1 list-disc list-inside">
+                    <li>Go to your Settings page</li>
+                    <li>Navigate to the Verification section</li>
+                    <li>Upload a valid ID document</li>
+                    <li>Wait for admin approval (usually within 24 hours)</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setShowVerificationModal(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    setShowVerificationModal(false);
+                    navigate('/settings?tab=verification');
+                  }}
+                  className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors"
+                >
+                  Go to Verification
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

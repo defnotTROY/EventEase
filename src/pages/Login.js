@@ -1,10 +1,14 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Mail, Lock, User, Phone, CheckCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Eye, EyeOff, Mail, Lock, User, Phone, CheckCircle, Calendar, ShieldCheck } from 'lucide-react';
 import { auth } from '../lib/supabase';
+import { appConfig } from '../config/appConfig';
 
 const Login = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const verificationRequired = searchParams.get('verification') === 'required';
+  const verifiedSuccess = searchParams.get('verified') === 'success';
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -68,9 +72,15 @@ const Login = () => {
       // Show success state
       setIsSuccess(true);
       
-      // Redirect to dashboard after 1.5 seconds
+      // Redirect to verification page if user needs verification, otherwise dashboard
       setTimeout(() => {
-        navigate('/');
+        // Check if user needs verification (not admin)
+        const isAdmin = data?.user?.user_metadata?.role === 'Administrator' || data?.user?.user_metadata?.role === 'Admin';
+        if (!isAdmin) {
+          navigate('/settings?tab=verification');
+        } else {
+          navigate('/');
+        }
       }, 1500);
       
     } catch (error) {
@@ -82,6 +92,32 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-white relative overflow-hidden w-full">
+      {/* Navigation Bar */}
+      <nav className="bg-white border-b border-gray-200 sticky top-0 z-50 relative">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <Link to="/" className="flex items-center">
+              <Calendar className="h-8 w-8 text-primary-600 mr-2" />
+              <span className="text-2xl font-bold text-gray-900">{appConfig.name}</span>
+            </Link>
+            <div className="flex items-center space-x-4">
+              <Link
+                to="/login"
+                className="text-gray-700 hover:text-primary-600 px-4 py-2 font-medium transition-colors"
+              >
+                Sign In
+              </Link>
+              <Link
+                to="/signup"
+                className="bg-primary-600 text-white px-6 py-2 rounded-lg hover:bg-primary-700 font-medium transition-colors"
+              >
+                Get Started
+              </Link>
+            </div>
+          </div>
+        </div>
+      </nav>
+
       {/* Subtle background logo */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <div className="text-[#3B82F6] opacity-5 text-[20rem] font-black tracking-wider select-none">
@@ -101,6 +137,32 @@ const Login = () => {
                   Login to Your Account
                 </h1>
               </div>
+
+              {/* Email Verification Success Message */}
+              {verifiedSuccess && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                  <div className="flex items-start">
+                    <CheckCircle className="h-5 w-5 text-green-600 mr-3 mt-0.5 flex-shrink-0" />
+                    <div className="text-sm text-green-800">
+                      <p className="font-semibold mb-1">Email Verified Successfully!</p>
+                      <p>Your email has been verified. You can now log in to your account.</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Verification Required Message */}
+              {verificationRequired && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                  <div className="flex items-start">
+                    <ShieldCheck className="h-5 w-5 text-blue-600 mr-3 mt-0.5 flex-shrink-0" />
+                    <div className="text-sm text-blue-800">
+                      <p className="font-semibold mb-1">Account Created Successfully!</p>
+                      <p>Please log in and complete your identity verification to register for events. You can access verification in Settings after logging in.</p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {!isSuccess ? (
                 <form className="space-y-6" onSubmit={handleSubmit}>

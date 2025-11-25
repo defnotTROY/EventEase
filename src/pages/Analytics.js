@@ -14,6 +14,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { analyticsService } from '../services/analyticsService';
+import { discoverabilityService } from '../services/discoverabilityService';
 import AIRecommendations from '../components/AIRecommendations';
 import AIScheduler from '../components/AIScheduler';
 import AIFeedbackAnalysis from '../components/AIFeedbackAnalysis';
@@ -37,6 +38,8 @@ const Analytics = () => {
   const [registrationSources, setRegistrationSources] = useState(null);
   const [satisfaction, setSatisfaction] = useState(null);
   const [periodOptions, setPeriodOptions] = useState([]);
+  const [discoverabilityScore, setDiscoverabilityScore] = useState(null);
+  const [loadingDiscoverability, setLoadingDiscoverability] = useState(false);
 
   const iconMap = useMemo(() => ({
     Calendar,
@@ -44,6 +47,33 @@ const Analytics = () => {
     TrendingUp,
     Activity
   }), []);
+
+  // Reload discoverability when event changes
+  useEffect(() => {
+    const loadDiscoverabilityScore = async (eventId) => {
+      if (eventId === 'all') {
+        setDiscoverabilityScore(null);
+        return;
+      }
+
+      setLoadingDiscoverability(true);
+      try {
+        const result = await discoverabilityService.calculateDiscoverabilityScore(eventId);
+        setDiscoverabilityScore(result);
+      } catch (error) {
+        console.error('Error loading discoverability score:', error);
+        setDiscoverabilityScore(null);
+      } finally {
+        setLoadingDiscoverability(false);
+      }
+    };
+
+    if (selectedEvent !== 'all') {
+      loadDiscoverabilityScore(selectedEvent);
+    } else {
+      setDiscoverabilityScore(null);
+    }
+  }, [selectedEvent]);
 
   const getChangeDisplay = (change, suffix = '%') => {
     if (change === null || change === undefined) {
@@ -334,6 +364,105 @@ const Analytics = () => {
               )}
             </div>
           </div>
+
+          {/* Discoverability Score */}
+          {selectedEvent !== 'all' && (
+            <div className="card">
+              <div className="flex items-center mb-6">
+                <Eye className="text-primary-600 mr-3" size={24} />
+                <h3 className="text-lg font-semibold text-gray-900">Event Discoverability Score</h3>
+              </div>
+              {loadingDiscoverability ? (
+                <div className="text-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary-600 mb-2" />
+                  <p className="text-gray-600">Calculating discoverability score...</p>
+                </div>
+              ) : discoverabilityScore ? (
+                <div className="space-y-6">
+                  {/* Score Display */}
+                  <div className="text-center">
+                    <div className={`inline-flex items-center justify-center w-32 h-32 rounded-full border-4 ${discoverabilityService.getScoreBorderColor(discoverabilityScore.score)} ${discoverabilityService.getScoreBgColor(discoverabilityScore.score)} mb-4`}>
+                      <div className="text-center">
+                        <div className={`text-4xl font-bold ${discoverabilityService.getScoreColor(discoverabilityScore.score)}`}>
+                          {discoverabilityScore.score}%
+                        </div>
+                        <div className="text-xs text-gray-600 mt-1">Current Score</div>
+                      </div>
+                    </div>
+                    <p className="text-sm text-gray-600">
+                      {discoverabilityScore.score >= 80 
+                        ? 'Excellent! Your event is highly discoverable.' 
+                        : discoverabilityScore.score >= 60 
+                        ? 'Good discoverability, but there\'s room for improvement.'
+                        : 'Your event needs optimization to improve discoverability.'}
+                    </p>
+                  </div>
+
+                  {/* Suggestions */}
+                  {discoverabilityScore.suggestions && discoverabilityScore.suggestions.length > 0 && (
+                    <div className="space-y-3">
+                      <h4 className="font-semibold text-gray-900">Suggestions to Improve:</h4>
+                      {discoverabilityScore.suggestions.map((suggestion, index) => (
+                        <div 
+                          key={index} 
+                          className={`p-4 rounded-lg border-l-4 ${
+                            suggestion.priority === 'high' 
+                              ? 'bg-yellow-50 border-yellow-500' 
+                              : suggestion.priority === 'medium'
+                              ? 'bg-blue-50 border-blue-500'
+                              : 'bg-gray-50 border-gray-400'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <p className="font-medium text-gray-900 mb-1">
+                                {suggestion.message}
+                              </p>
+                              {suggestion.impact && (
+                                <p className="text-sm text-gray-600">
+                                  Impact: {suggestion.impact}
+                                </p>
+                              )}
+                            </div>
+                            <span className={`px-2 py-1 text-xs font-medium rounded ${
+                              suggestion.priority === 'high' 
+                                ? 'bg-yellow-200 text-yellow-800' 
+                                : suggestion.priority === 'medium'
+                                ? 'bg-blue-200 text-blue-800'
+                                : 'bg-gray-200 text-gray-800'
+                            }`}>
+                              {suggestion.priority === 'high' ? 'High' : suggestion.priority === 'medium' ? 'Medium' : 'Low'}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Score Breakdown */}
+                  {discoverabilityScore.breakdown && Object.keys(discoverabilityScore.breakdown).length > 0 && (
+                    <div>
+                      <h4 className="font-semibold text-gray-900 mb-3">Score Breakdown:</h4>
+                      <div className="space-y-2">
+                        {Object.entries(discoverabilityScore.breakdown).map(([key, value]) => (
+                          <div key={key} className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600 capitalize">{key.replace(/_/g, ' ')}:</span>
+                            <span className="font-medium text-gray-900">
+                              {value.score || 0}/{value.max || 0} points
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  Unable to calculate discoverability score for this event.
+                </div>
+              )}
+            </div>
+          )}
 
           {/* AI-Powered Features */}
           <div className="space-y-6">

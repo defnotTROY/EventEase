@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Search, Bell, User, Menu, X, LogOut, Settings, Loader2 } from 'lucide-react';
-import { auth } from '../lib/supabase';
+import { auth, supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { searchService } from '../services/searchService';
 import { notificationService } from '../services/notificationService';
@@ -75,15 +75,66 @@ const Navbar = ({ onMenuClick }) => {
     }
   };
 
-  // Refresh notifications periodically (every 30 seconds) when user is logged in
+  // Set up real-time subscription for notifications
   useEffect(() => {
     if (!user) return;
 
+    // Load notifications immediately
+    loadNotifications(user.id);
+
+    // Set up real-time subscription for new notifications
+    const channel = supabase
+      .channel(`notifications:${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('New notification received:', payload.new);
+          // Add new notification to the list
+          setNotifications(prev => [payload.new, ...prev]);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('Notification updated:', payload.new);
+          // Update notification in the list
+          setNotifications(prev =>
+            prev.map(n => n.id === payload.new.id ? payload.new : n)
+          );
+        }
+      )
+      .subscribe();
+
+    // Refresh notifications periodically (every 30 seconds) as backup
     const interval = setInterval(() => {
       loadNotifications(user.id);
     }, 30000); // Refresh every 30 seconds
 
-    return () => clearInterval(interval);
+    // Refresh notifications when page becomes visible
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadNotifications(user.id);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   // Close dropdown when clicking outside
@@ -223,8 +274,18 @@ const Navbar = ({ onMenuClick }) => {
     }
   };
 
-  const getNotificationIcon = (type) => {
+  const getNotificationIcon = (type, metadata) => {
+    // Check metadata for specific alert types
+    if (metadata?.alert_type === 'verification_approved') {
+      return '✅';
+    }
+    if (metadata?.alert_type === 'verification_rejected') {
+      return '❌';
+    }
+    
     switch (type) {
+      case 'system_alert':
+        return '🔔';
       case 'timely_suggestion':
         return '✨';
       case 'price_alert':
@@ -315,7 +376,13 @@ const Navbar = ({ onMenuClick }) => {
             {/* Notifications */}
             <div className="relative notification-container">
               <button
-                onClick={() => setShowNotifications(!showNotifications)}
+                onClick={async () => {
+                  // Refresh notifications when opening the dropdown
+                  if (!showNotifications && user) {
+                    await loadNotifications(user.id);
+                  }
+                  setShowNotifications(!showNotifications);
+                }}
                 className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 relative transition-colors"
                 aria-label="Notifications"
               >
@@ -357,14 +424,17 @@ const Navbar = ({ onMenuClick }) => {
                           >
                             <div className="flex items-start space-x-3">
                               <div className="flex-shrink-0 mt-0.5">
-                                <span className="text-lg">{getNotificationIcon(notification.type)}</span>
+                                <span className="text-lg">{getNotificationIcon(notification.type, notification.metadata)}</span>
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className={`text-sm ${
                                   !notification.read ? 'font-semibold text-gray-900' : 'text-gray-700'
                                 }`}>
-                                  {notification.message}
+                                  {notification.title || notification.message}
                                 </p>
+                                {notification.title && notification.message && notification.title !== notification.message && (
+                                  <p className="text-xs text-gray-600 mt-1">{notification.message}</p>
+                                )}
                                 <p className="text-xs text-gray-500 mt-1">
                                   {formatNotificationTime(notification.created_at)}
                                 </p>

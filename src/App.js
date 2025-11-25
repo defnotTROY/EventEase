@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import EmailVerification from './pages/EmailVerification';
 import Dashboard from './pages/Dashboard';
 import Events from './pages/Events';
 import EventCreation from './pages/EventCreation';
@@ -21,7 +22,9 @@ import AdminEventManagement from './pages/AdminEventManagement';
 import AdminVerificationReview from './pages/AdminVerificationReview';
 import AdminQRCheckIn from './pages/AdminQRCheckIn';
 import CreateAdminAccount from './pages/CreateAdminAccount';
+import Landing from './pages/Landing';
 import { auth } from './lib/supabase';
+import { ToastProvider } from './contexts/ToastContext';
 
 function AppContent() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -30,7 +33,9 @@ function AppContent() {
   const location = useLocation();
 
   // Check if current route is auth-related
-  const isAuthRoute = ['/login', '/signup', '/forgot-password', '/reset-password', '/create-admin'].includes(location.pathname);
+  const isAuthRoute = ['/login', '/signup', '/forgot-password', '/reset-password', '/create-admin', '/verify-email'].includes(location.pathname);
+  // Landing page shows for unauthenticated users on "/" or anyone on "/landing"
+  const isLandingPage = location.pathname === '/landing' || (location.pathname === '/' && !user);
 
   // Get current user and listen for auth changes
   useEffect(() => {
@@ -68,14 +73,14 @@ function AppContent() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Only show navbar and sidebar for authenticated users on non-auth routes */}
-      {user && !isAuthRoute && (
+      {user && !isAuthRoute && !isLandingPage && (
         <>
           <Navbar onMenuClick={() => setSidebarOpen(true)} />
           <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         </>
       )}
       
-      <div className={user && !isAuthRoute ? "lg:ml-64" : ""}>
+      <div className={user && !isAuthRoute && !isLandingPage ? "lg:ml-64" : ""}>
         {isAuthRoute ? (
           <Routes>
             <Route path="/login" element={<Login />} />
@@ -83,6 +88,12 @@ function AppContent() {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/create-admin" element={<CreateAdminAccount />} />
+            <Route path="/verify-email" element={<EmailVerification />} />
+          </Routes>
+        ) : isLandingPage ? (
+          <Routes>
+            <Route path="/" element={<Landing />} />
+            <Route path="/landing" element={<Landing />} />
           </Routes>
         ) : (
           <main className="pt-0 lg:pt-0 px-6 pb-6">
@@ -114,9 +125,11 @@ function AppContent() {
 
 function App() {
   return (
-    <Router>
-      <AppContent />
-    </Router>
+    <ToastProvider>
+      <Router>
+        <AppContent />
+      </Router>
+    </ToastProvider>
   );
 }
 
