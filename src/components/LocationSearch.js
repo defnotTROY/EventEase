@@ -38,6 +38,7 @@ const LocationSearch = ({ value, onChange, placeholder = "Search for specific ve
   // Track if API is available
   const [apiAvailable, setApiAvailable] = useState(true);
   const [apiError, setApiError] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
 
   // Search for locations using Nominatim (OpenStreetMap) - free and supports country filtering
   const searchLocations = async (query) => {
@@ -243,9 +244,14 @@ const LocationSearch = ({ value, onChange, placeholder = "Search for specific ve
           value={searchQuery}
           onChange={handleInputChange}
           onFocus={() => {
+            setIsFocused(true);
             if (suggestions.length > 0) {
               setShowSuggestions(true);
             }
+          }}
+          onBlur={() => {
+            // Delay to allow click on suggestions
+            setTimeout(() => setIsFocused(false), 200);
           }}
           className={`w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
             required && !value ? 'border-red-300' : ''
@@ -327,12 +333,12 @@ const LocationSearch = ({ value, onChange, placeholder = "Search for specific ve
         </div>
       )}
 
-      {/* API Error / Manual Entry Notice */}
-      {apiError && searchQuery.length >= 3 && (
+      {/* API Error / Manual Entry Notice - only show while input is focused */}
+      {apiError && searchQuery.length >= 3 && isFocused && (
         <div className="absolute z-50 w-full mt-1 bg-yellow-50 border border-yellow-200 rounded-lg shadow-lg p-3 text-sm">
           <p className="text-yellow-800 font-medium">Location suggestions unavailable</p>
           <p className="text-yellow-700 text-xs mt-1">
-            You can still type your location manually (e.g., "Gordon College, Olongapo City, Zambales").
+            Type your location manually, then click outside to confirm.
           </p>
         </div>
       )}
