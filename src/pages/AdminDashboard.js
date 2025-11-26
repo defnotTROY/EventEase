@@ -17,6 +17,7 @@ import {
 import { auth } from '../lib/supabase';
 import { eventsService } from '../services/eventsService';
 import { adminService } from '../services/adminService';
+import { statusService } from '../services/statusService';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -76,11 +77,24 @@ const AdminDashboard = () => {
       const { data: events, error: eventsError } = await eventsService.getAllEvents();
       if (eventsError) throw eventsError;
 
-      // Calculate statistics
+      // Calculate statistics using statusService for accurate status determination
       const totalEvents = events?.length || 0;
-      const activeEvents = events?.filter(e => e.status === 'ongoing').length || 0;
-      const upcomingEvents = events?.filter(e => e.status === 'upcoming').length || 0;
-      const completedEvents = events?.filter(e => e.status === 'completed').length || 0;
+      
+      // Use statusService to calculate the actual status based on date/time
+      const activeEvents = events?.filter(e => {
+        const calculatedStatus = statusService.calculateEventStatus(e);
+        return calculatedStatus === 'ongoing';
+      }).length || 0;
+      
+      const upcomingEvents = events?.filter(e => {
+        const calculatedStatus = statusService.calculateEventStatus(e);
+        return calculatedStatus === 'upcoming';
+      }).length || 0;
+      
+      const completedEvents = events?.filter(e => {
+        const calculatedStatus = statusService.calculateEventStatus(e);
+        return calculatedStatus === 'completed';
+      }).length || 0;
 
       // Calculate total participants across all events
       let totalParticipants = 0;
@@ -185,217 +199,185 @@ const AdminDashboard = () => {
       {/* Header */}
       <div className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-              <p className="text-gray-600 mt-1">Platform overview and management</p>
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 py-4 sm:py-6">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 break-words">Admin Dashboard</h1>
+              <p className="text-sm sm:text-base text-gray-600 mt-1">Platform overview and management</p>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4">
               <button
                 onClick={loadDashboardData}
-                className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                className="flex items-center px-3 sm:px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Refresh
+                <RefreshCw className="h-4 w-4 mr-2 flex-shrink-0" />
+                <span>Refresh</span>
               </button>
-              <div className="flex items-center text-sm text-gray-600">
-                <div className={`w-2 h-2 rounded-full mr-2 ${
+              <div className="flex items-center text-xs sm:text-sm text-gray-600">
+                <div className={`w-2 h-2 rounded-full mr-2 flex-shrink-0 ${
                   stats.systemHealth === 'healthy' ? 'bg-green-400' : 
                   stats.systemHealth === 'degraded' ? 'bg-yellow-400' : 
                   'bg-red-400'
                 }`}></div>
-                System {stats.systemHealth === 'healthy' ? 'Healthy' : 
-                        stats.systemHealth === 'degraded' ? 'Degraded' : 
-                        'Unhealthy'}
+                <span className="whitespace-nowrap">
+                  System {stats.systemHealth === 'healthy' ? 'Healthy' : 
+                          stats.systemHealth === 'degraded' ? 'Degraded' : 
+                          'Unhealthy'}
+                </span>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Users</p>
-                <p className="text-3xl font-bold text-gray-900">{stats.totalUsers}</p>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">Total Users</p>
+                <p className="text-xl sm:text-3xl font-bold text-gray-900">{stats.totalUsers}</p>
               </div>
-              <div className="p-3 bg-blue-100 rounded-full">
-                <Users className="h-6 w-6 text-blue-600" />
-              </div>
-            </div>
-            <div className="mt-4 flex items-center text-sm text-gray-600">
-              <Users className="h-4 w-4 mr-1" />
-              <span>All platform users</span>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Events</p>
-                <p className="text-3xl font-bold text-gray-900">{stats.totalEvents}</p>
-              </div>
-              <div className="p-3 bg-green-100 rounded-full">
-                <Calendar className="h-6 w-6 text-green-600" />
+              <div className="p-2 sm:p-3 bg-blue-100 rounded-full flex-shrink-0">
+                <Users className="h-4 w-4 sm:h-6 sm:w-6 text-blue-600" />
               </div>
             </div>
-            <div className="mt-4 flex items-center text-sm text-gray-600">
-              <Calendar className="h-4 w-4 mr-1" />
-              <span>All platform events</span>
+            <div className="mt-2 sm:mt-4 flex items-center text-xs sm:text-sm text-gray-600">
+              <Users className="h-3 w-3 sm:h-4 sm:w-4 mr-1 flex-shrink-0" />
+              <span className="truncate">All platform users</span>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Participants</p>
-                <p className="text-3xl font-bold text-gray-900">{stats.totalParticipants}</p>
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">Total Events</p>
+                <p className="text-xl sm:text-3xl font-bold text-gray-900">{stats.totalEvents}</p>
               </div>
-              <div className="p-3 bg-purple-100 rounded-full">
-                <Users className="h-6 w-6 text-purple-600" />
+              <div className="p-2 sm:p-3 bg-green-100 rounded-full flex-shrink-0">
+                <Calendar className="h-4 w-4 sm:h-6 sm:w-6 text-green-600" />
               </div>
             </div>
-            <div className="mt-4 flex items-center text-sm text-gray-600">
-              <Activity className="h-4 w-4 mr-1" />
-              <span>Across all events</span>
+            <div className="mt-2 sm:mt-4 flex items-center text-xs sm:text-sm text-gray-600">
+              <Calendar className="h-3 w-3 sm:h-4 sm:w-4 mr-1 flex-shrink-0" />
+              <span className="truncate">All platform events</span>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Recent Registrations</p>
-                <p className="text-3xl font-bold text-gray-900">{stats.recentRegistrations}</p>
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">Total Participants</p>
+                <p className="text-xl sm:text-3xl font-bold text-gray-900">{stats.totalParticipants}</p>
               </div>
-              <div className="p-3 bg-yellow-100 rounded-full">
-                <TrendingUp className="h-6 w-6 text-yellow-600" />
+              <div className="p-2 sm:p-3 bg-purple-100 rounded-full flex-shrink-0">
+                <Users className="h-4 w-4 sm:h-6 sm:w-6 text-purple-600" />
               </div>
             </div>
-            <div className="mt-4 flex items-center text-sm text-gray-600">
-              <Clock className="h-4 w-4 mr-1" />
-              <span>Last 10 activities</span>
+            <div className="mt-2 sm:mt-4 flex items-center text-xs sm:text-sm text-gray-600">
+              <Activity className="h-3 w-3 sm:h-4 sm:w-4 mr-1 flex-shrink-0" />
+              <span className="truncate">Across all events</span>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">Recent Registrations</p>
+                <p className="text-xl sm:text-3xl font-bold text-gray-900">{stats.recentRegistrations}</p>
+              </div>
+              <div className="p-2 sm:p-3 bg-yellow-100 rounded-full flex-shrink-0">
+                <TrendingUp className="h-4 w-4 sm:h-6 sm:w-6 text-yellow-600" />
+              </div>
+            </div>
+            <div className="mt-2 sm:mt-4 flex items-center text-xs sm:text-sm text-gray-600">
+              <Clock className="h-3 w-3 sm:h-4 sm:w-4 mr-1 flex-shrink-0" />
+              <span className="truncate">Last 10 activities</span>
             </div>
           </div>
         </div>
 
-        {/* Event Status Overview */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Event Status Overview</h3>
-            <div className="space-y-4">
+        {/* Event Status Overview and System Alerts */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Event Status Overview</h3>
+            <div className="space-y-3 sm:space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
-                  <div className="w-3 h-3 bg-blue-500 rounded-full mr-3"></div>
-                  <span className="text-sm text-gray-600">Upcoming</span>
+                  <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-blue-500 rounded-full mr-2 sm:mr-3 flex-shrink-0"></div>
+                  <span className="text-xs sm:text-sm text-gray-600">Upcoming</span>
                 </div>
-                <span className="text-sm font-semibold text-gray-900">{stats.upcomingEvents}</span>
+                <span className="text-xs sm:text-sm font-semibold text-gray-900">{stats.upcomingEvents}</span>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
-                  <div className="w-3 h-3 bg-yellow-500 rounded-full mr-3"></div>
-                  <span className="text-sm text-gray-600">Ongoing</span>
+                  <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-yellow-500 rounded-full mr-2 sm:mr-3 flex-shrink-0"></div>
+                  <span className="text-xs sm:text-sm text-gray-600">Ongoing</span>
                 </div>
-                <span className="text-sm font-semibold text-gray-900">{stats.activeEvents}</span>
+                <span className="text-xs sm:text-sm font-semibold text-gray-900">{stats.activeEvents}</span>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
-                  <div className="w-3 h-3 bg-green-500 rounded-full mr-3"></div>
-                  <span className="text-sm text-gray-600">Completed</span>
+                  <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-green-500 rounded-full mr-2 sm:mr-3 flex-shrink-0"></div>
+                  <span className="text-xs sm:text-sm text-gray-600">Completed</span>
                 </div>
-                <span className="text-sm font-semibold text-gray-900">{stats.completedEvents}</span>
+                <span className="text-xs sm:text-sm font-semibold text-gray-900">{stats.completedEvents}</span>
               </div>
             </div>
           </div>
 
           {/* System Alerts */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">System Alerts</h3>
-            <div className="space-y-3">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">System Alerts</h3>
+            <div className="space-y-2 sm:space-y-3">
               {systemAlerts.length > 0 ? (
                 systemAlerts.map((alert) => (
-                  <div key={alert.id} className={`p-3 rounded-lg border ${getAlertColor(alert.severity)}`}>
+                  <div key={alert.id} className={`p-2 sm:p-3 rounded-lg border ${getAlertColor(alert.severity)}`}>
                     <div className="flex items-start">
-                      <AlertTriangle className="h-4 w-4 mt-0.5 mr-2" />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">{alert.message}</p>
-                        <p className="text-xs opacity-75">{alert.time}</p>
+                      <AlertTriangle className="h-3.5 w-3.5 sm:h-4 sm:w-4 mt-0.5 mr-2 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs sm:text-sm font-medium break-words">{alert.message}</p>
+                        <p className="text-[10px] sm:text-xs opacity-75">{alert.time}</p>
                       </div>
                     </div>
                   </div>
                 ))
               ) : (
                 <div className="text-center py-4">
-                  <CheckCircle className="h-8 w-8 text-green-500 mx-auto mb-2" />
-                  <p className="text-sm text-gray-600">No alerts</p>
+                  <CheckCircle className="h-6 w-6 sm:h-8 sm:w-8 text-green-500 mx-auto mb-2" />
+                  <p className="text-xs sm:text-sm text-gray-600">No alerts</p>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Quick Actions */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-            <div className="space-y-3">
-              <button
-                onClick={() => navigate('/admin/users')}
-                className="w-full flex items-center px-4 py-2 text-sm text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                <Users className="h-4 w-4 mr-3" />
-                Manage Users
-              </button>
-              <button
-                onClick={() => navigate('/admin/events')}
-                className="w-full flex items-center px-4 py-2 text-sm text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                <Calendar className="h-4 w-4 mr-3" />
-                Manage Events
-              </button>
-              <button
-                onClick={() => navigate('/admin/analytics')}
-                className="w-full flex items-center px-4 py-2 text-sm text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                <BarChart3 className="h-4 w-4 mr-3" />
-                View Analytics
-              </button>
-              <button
-                onClick={() => navigate('/admin/settings')}
-                className="w-full flex items-center px-4 py-2 text-sm text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                <Settings className="h-4 w-4 mr-3" />
-                System Settings
-              </button>
-            </div>
-          </div>
         </div>
 
         {/* Recent Activity */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
-          <div className="space-y-4">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+          <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Recent Activity</h3>
+          <div className="space-y-3 sm:space-y-4">
             {recentActivity.length > 0 ? (
               recentActivity.map((activity) => {
                 const IconComponent = activity.icon || getActivityIcon(activity.type);
                 return (
-                  <div key={activity.id} className="flex items-start space-x-3">
+                  <div key={activity.id} className="flex items-start space-x-2 sm:space-x-3">
                     <div className="flex-shrink-0">
-                      <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                        <IconComponent className="h-4 w-4 text-gray-600" />
+                      <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                        <IconComponent className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-600" />
                       </div>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-gray-900">{activity.message}</p>
-                      <p className="text-xs text-gray-500">{activity.time}</p>
+                      <p className="text-xs sm:text-sm text-gray-900 break-words">{activity.message}</p>
+                      <p className="text-[10px] sm:text-xs text-gray-500">{activity.time}</p>
                     </div>
                   </div>
                 );
               })
             ) : (
-              <div className="text-center py-8">
-                <Activity className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-                <p className="text-sm text-gray-600">No recent activity</p>
+              <div className="text-center py-6 sm:py-8">
+                <Activity className="h-10 w-10 sm:h-12 sm:w-12 text-gray-400 mx-auto mb-2" />
+                <p className="text-xs sm:text-sm text-gray-600">No recent activity</p>
               </div>
             )}
           </div>

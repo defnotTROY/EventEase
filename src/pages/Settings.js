@@ -1336,15 +1336,15 @@ const Settings = () => {
       ) : (
         <>
           {/* Header */}
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
-              <p className="text-gray-600 mt-1">Manage your account preferences and system configuration</p>
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 sm:gap-0">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 break-words">Settings</h1>
+              <p className="text-sm sm:text-base text-gray-600 mt-1 break-words">Manage your account preferences and system configuration</p>
             </div>
             <button 
               onClick={handleSave} 
               disabled={saving || loading}
-              className="btn-primary flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-primary flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap self-start sm:self-auto"
             >
               {saving ? (
                 <Loader2 size={20} className="mr-2 animate-spin" />
@@ -1356,30 +1356,32 @@ const Settings = () => {
           </div>
 
           {/* Settings Tabs */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
             <div className="border-b border-gray-200">
-              <nav className="flex space-x-8 px-6">
-                {tabs.map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => {
-                      setActiveTab(tab.id);
-                      navigate(`/settings?tab=${tab.id}`, { replace: true });
-                    }}
-                    className={`py-4 px-1 border-b-2 font-medium text-sm capitalize flex items-center ${
-                      activeTab === tab.id
-                        ? 'border-primary-500 text-primary-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    <tab.icon size={20} className="mr-2" />
-                    {tab.name}
-                  </button>
-                ))}
+              <nav className="flex overflow-x-auto scrollbar-hide px-4 sm:px-6">
+                <div className="flex space-x-4 sm:space-x-8 min-w-max">
+                  {tabs.map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => {
+                        setActiveTab(tab.id);
+                        navigate(`/settings?tab=${tab.id}`, { replace: true });
+                      }}
+                      className={`py-4 px-1 border-b-2 font-medium text-sm capitalize flex items-center whitespace-nowrap transition-colors ${
+                        activeTab === tab.id
+                          ? 'border-primary-500 text-primary-600'
+                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      }`}
+                    >
+                      <tab.icon size={18} className="mr-2 flex-shrink-0" />
+                      <span>{tab.name}</span>
+                    </button>
+                  ))}
+                </div>
               </nav>
             </div>
 
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               {renderTabContent()}
             </div>
           </div>

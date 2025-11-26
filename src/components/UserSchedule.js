@@ -98,11 +98,11 @@ const UserSchedule = ({ scheduleData: propScheduleData = null, user: propUser = 
                       userRole === 'Admin';
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-xl font-bold text-gray-900">My Schedule</h2>
-          <p className="text-sm text-gray-600 mt-1">
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-4 sm:mb-6">
+        <div className="min-w-0 flex-1">
+          <h2 className="text-lg sm:text-xl font-bold text-gray-900 break-words">My Schedule</h2>
+          <p className="text-xs sm:text-sm text-gray-600 mt-1 break-words">
             {isOrganizer 
               ? 'Events you are managing' 
               : 'Events you are registered for'}
@@ -110,7 +110,7 @@ const UserSchedule = ({ scheduleData: propScheduleData = null, user: propUser = 
         </div>
         <Link
           to="/events"
-          className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+          className="text-sm text-primary-600 hover:text-primary-700 font-medium whitespace-nowrap self-start sm:self-auto"
         >
           View All
         </Link>
@@ -133,56 +133,58 @@ const UserSchedule = ({ scheduleData: propScheduleData = null, user: propUser = 
           </Link>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {scheduleDates.map((date) => {
             const events = groupedSchedule[date];
             const formattedDate = scheduleService.formatDate(date);
 
             return (
-              <div key={date} className="border-b border-gray-200 last:border-b-0 pb-6 last:pb-0">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              <div key={date} className="border-b border-gray-200 last:border-b-0 pb-4 sm:pb-6 last:pb-0">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 break-words">
                   {formattedDate}
                 </h3>
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   {events.map((event) => (
                     <Link
                       key={event.id}
                       to={`/events/${event.id}`}
-                      className="block p-4 border border-gray-200 rounded-lg hover:border-primary-300 hover:shadow-md transition-all group"
+                      className="block p-3 sm:p-4 border border-gray-200 rounded-lg hover:border-primary-300 hover:shadow-md transition-all group"
                     >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-gray-900 group-hover:text-primary-600 transition-colors mb-2">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-semibold text-sm sm:text-base text-gray-900 group-hover:text-primary-600 transition-colors mb-2 break-words">
                             {event.title}
                           </h4>
                           
                           <div className="space-y-2">
                             {event.time && (
-                              <div className="flex items-center text-sm text-gray-600">
-                                <Clock className="h-4 w-4 mr-2 text-gray-400" />
-                                {scheduleService.formatTime(event.time)}
+                              <div className="flex items-center text-xs sm:text-sm text-gray-600">
+                                <Clock className="h-3 w-3 sm:h-4 sm:w-4 mr-2 text-gray-400 flex-shrink-0" />
+                                <span className="break-words">{scheduleService.formatTime(event.time)}</span>
                               </div>
                             )}
                             
                             {event.location && (
-                              <div className="flex items-center text-sm text-gray-600">
-                                <MapPin className="h-4 w-4 mr-2 text-gray-400" />
-                                {event.is_virtual ? (
-                                  <span className="flex items-center">
-                                    <span className="mr-2">Virtual Event</span>
-                                    {event.virtual_link && (
-                                      <ExternalLink className="h-3 w-3" />
-                                    )}
-                                  </span>
-                                ) : (
-                                  event.location
-                                )}
+                              <div className="flex items-start text-xs sm:text-sm text-gray-600">
+                                <MapPin className="h-3 w-3 sm:h-4 sm:w-4 mr-2 text-gray-400 flex-shrink-0 mt-0.5" />
+                                <span className="break-words">
+                                  {event.is_virtual ? (
+                                    <span className="flex items-center flex-wrap">
+                                      <span className="mr-2">Virtual Event</span>
+                                      {event.virtual_link && (
+                                        <ExternalLink className="h-3 w-3" />
+                                      )}
+                                    </span>
+                                  ) : (
+                                    event.location
+                                  )}
+                                </span>
                               </div>
                             )}
 
                             {event.category && (
                               <div className="flex items-center">
-                                <span className="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded">
+                                <span className="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded break-words">
                                   {event.category}
                                 </span>
                               </div>
@@ -190,10 +192,10 @@ const UserSchedule = ({ scheduleData: propScheduleData = null, user: propUser = 
                           </div>
                         </div>
 
-                        <div className="ml-4 text-right">
+                        <div className="flex sm:flex-col sm:items-end sm:text-right gap-2 sm:gap-0 flex-shrink-0">
                           {isOrganizer && event.participant_count !== null && (
-                            <div className="flex items-center text-sm text-gray-600 mb-2">
-                              <Users className="h-4 w-4 mr-1 text-gray-400" />
+                            <div className="flex items-center text-xs sm:text-sm text-gray-600 sm:mb-2">
+                              <Users className="h-3 w-3 sm:h-4 sm:w-4 mr-1 text-gray-400 flex-shrink-0" />
                               <span>{event.participant_count}</span>
                               {event.max_participants && (
                                 <span className="text-gray-400">/{event.max_participants}</span>
@@ -201,7 +203,7 @@ const UserSchedule = ({ scheduleData: propScheduleData = null, user: propUser = 
                             </div>
                           )}
                           
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full whitespace-nowrap ${
                             event.status === 'upcoming' 
                               ? 'bg-blue-100 text-blue-800'
                               : event.status === 'ongoing'

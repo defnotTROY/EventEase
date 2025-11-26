@@ -168,29 +168,29 @@ const Participants = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Participants</h1>
-          <p className="text-gray-600 mt-1">Manage and engage with event participants</p>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Participants</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">Manage and engage with event participants</p>
         </div>
-        <div className="flex space-x-3">
+        <div className="flex flex-wrap gap-2 sm:gap-3">
           <button 
             onClick={loadParticipants}
-            className="btn-secondary flex items-center"
+            className="btn-secondary flex items-center justify-center text-sm sm:text-base px-3 py-2 sm:px-4"
             disabled={loading}
           >
-            <Users size={20} className="mr-2" />
-            Refresh
+            <Users size={18} className="sm:mr-2" />
+            <span className="hidden sm:inline">Refresh</span>
           </button>
-          <button className="btn-secondary flex items-center">
-            <Download size={20} className="mr-2" />
-            Export List
+          <button className="btn-secondary flex items-center justify-center text-sm sm:text-base px-3 py-2 sm:px-4">
+            <Download size={18} className="sm:mr-2" />
+            <span className="hidden sm:inline">Export List</span>
           </button>
-          <button className="btn-primary flex items-center">
-            <Plus size={20} className="mr-2" />
-            Add Participant
+          <button className="btn-primary flex items-center justify-center text-sm sm:text-base px-3 py-2 sm:px-4">
+            <Plus size={18} className="sm:mr-2" />
+            <span className="hidden sm:inline">Add Participant</span>
           </button>
         </div>
       </div>
@@ -225,48 +225,51 @@ const Participants = () => {
       {!loading && !error && (
         <>
       {/* Filters and Search */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div className="flex flex-col lg:flex-row gap-4">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+        <div className="flex flex-col gap-3 sm:gap-4">
           {/* Search */}
-          <div className="flex-1">
+          <div className="w-full">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
               <input
                 type="text"
-                placeholder="Search participants by name or email..."
+                placeholder="Search by name or email..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               />
             </div>
           </div>
 
-          {/* Event Filter */}
-          <div className="lg:w-48">
-            <select
-              value={selectedEvent}
-              onChange={(e) => setSelectedEvent(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            >
-              {events.map(event => (
-                <option key={event.id} value={event.id}>{event.name}</option>
-              ))}
-            </select>
-          </div>
+          {/* Filters Row */}
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+            {/* Event Filter */}
+            <div className="flex-1 sm:flex-initial sm:w-44 lg:w-48">
+              <select
+                value={selectedEvent}
+                onChange={(e) => setSelectedEvent(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              >
+                {events.map(event => (
+                  <option key={event.id} value={event.id}>{event.name}</option>
+                ))}
+              </select>
+            </div>
 
-          {/* Status Filter */}
-          <div className="lg:w-48">
-            <select
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            >
-              {statuses.map(status => (
-                <option key={status} value={status}>
-                  {status === 'all' ? 'All Status' : status.charAt(0).toUpperCase() + status.slice(1)}
-                </option>
-              ))}
-            </select>
+            {/* Status Filter */}
+            <div className="flex-1 sm:flex-initial sm:w-44 lg:w-48">
+              <select
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              >
+                {statuses.map(status => (
+                  <option key={status} value={status}>
+                    {status === 'all' ? 'All Status' : status.charAt(0).toUpperCase() + status.slice(1)}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
       </div>
@@ -362,66 +365,43 @@ const Participants = () => {
       )}
 
       {/* Participant Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="card text-center">
-          <div className="p-3 bg-blue-100 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-            <Users className="text-blue-600" size={32} />
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6">
+        <div className="card text-center p-4 sm:p-6">
+          <div className="p-2 sm:p-3 bg-blue-100 rounded-full w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-2 sm:mb-4 flex items-center justify-center">
+            <Users className="text-blue-600" size={24} />
           </div>
-          <h3 className="text-2xl font-bold text-gray-900 mb-2">{participants?.length || 0}</h3>
-          <p className="text-sm text-gray-600">Total Participants</p>
+          <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1 sm:mb-2">{participants?.length || 0}</h3>
+          <p className="text-xs sm:text-sm text-gray-600">Total</p>
         </div>
 
-        <div className="card text-center">
-          <div className="p-3 bg-green-100 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-            <Users className="text-green-600" size={32} />
+        <div className="card text-center p-4 sm:p-6">
+          <div className="p-2 sm:p-3 bg-green-100 rounded-full w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-2 sm:mb-4 flex items-center justify-center">
+            <Users className="text-green-600" size={24} />
           </div>
-          <h3 className="text-2xl font-bold text-gray-900 mb-2">
+          <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1 sm:mb-2">
             {(participants || []).filter(p => p.status === 'attended' || p.status === 'active').length}
           </h3>
-          <p className="text-sm text-gray-600">Attended</p>
+          <p className="text-xs sm:text-sm text-gray-600">Attended</p>
         </div>
 
-        <div className="card text-center">
-          <div className="p-3 bg-blue-100 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-            <Users className="text-blue-600" size={32} />
+        <div className="card text-center p-4 sm:p-6">
+          <div className="p-2 sm:p-3 bg-blue-100 rounded-full w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-2 sm:mb-4 flex items-center justify-center">
+            <Users className="text-blue-600" size={24} />
           </div>
-          <h3 className="text-2xl font-bold text-gray-900 mb-2">
+          <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1 sm:mb-2">
             {(participants || []).filter(p => p.status === 'registered').length}
           </h3>
-          <p className="text-sm text-gray-600">Registered</p>
+          <p className="text-xs sm:text-sm text-gray-600">Registered</p>
         </div>
 
-        <div className="card text-center">
-          <div className="p-3 bg-purple-100 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-            <Calendar className="text-purple-600" size={32} />
+        <div className="card text-center p-4 sm:p-6">
+          <div className="p-2 sm:p-3 bg-purple-100 rounded-full w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-2 sm:mb-4 flex items-center justify-center">
+            <Calendar className="text-purple-600" size={24} />
           </div>
-          <h3 className="text-2xl font-bold text-gray-900 mb-2">
+          <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1 sm:mb-2">
             {(participants || []).filter(p => p.events?.length > 1).length}
           </h3>
-          <p className="text-sm text-gray-600">Multi-Event Attendees</p>
-        </div>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <button className="flex flex-col items-center p-4 border border-gray-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-colors">
-            <QrCode className="text-primary-600 mb-2" size={24} />
-            <span className="text-sm font-medium text-gray-900">Bulk Check-in</span>
-          </button>
-          <button className="flex flex-col items-center p-4 border border-gray-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-colors">
-            <MessageSquare className="text-primary-600 mb-2" size={24} />
-            <span className="text-sm font-medium text-gray-900">Send Notifications</span>
-          </button>
-          <button className="flex flex-col items-center p-4 border border-gray-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-colors">
-            <Download className="text-primary-600 mb-2" size={24} />
-            <span className="text-sm font-medium text-gray-900">Export Data</span>
-          </button>
-          <button className="flex flex-col items-center p-4 border border-gray-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-colors">
-            <Users className="text-primary-600 mb-2" size={24} />
-            <span className="text-sm font-medium text-gray-900">Import Participants</span>
-          </button>
+          <p className="text-xs sm:text-sm text-gray-600">Multi-Event</p>
         </div>
       </div>
         </>
@@ -431,3 +411,4 @@ const Participants = () => {
 };
 
 export default Participants;
+

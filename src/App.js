@@ -96,7 +96,7 @@ function AppContent() {
             <Route path="/landing" element={<Landing />} />
           </Routes>
         ) : (
-          <main className="pt-0 lg:pt-0 px-6 pb-6">
+          <main className="pt-0 lg:pt-0 px-4 sm:px-6 pb-4 sm:pb-6">
             <div className="max-w-screen-2xl mx-auto w-full no-top-gap">
               <Routes>
                 <Route path="/" element={<Dashboard />} />

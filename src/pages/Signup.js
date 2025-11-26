@@ -186,8 +186,8 @@ const Signup = () => {
   return (
     <div className="min-h-screen bg-white relative overflow-hidden w-full">
       {/* Subtle background logo */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div className="text-[#3B82F6] opacity-5 text-[20rem] font-black tracking-wider select-none">
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
+        <div className="text-[#3B82F6] opacity-5 text-[6rem] sm:text-[12rem] md:text-[16rem] lg:text-[20rem] font-black tracking-wider select-none whitespace-nowrap">
           EVENTEASE
         </div>
       </div>
@@ -236,15 +236,15 @@ const Signup = () => {
               )}
 
                   {/* Name Fields */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
                     {/* First Name */}
                     <div>
-                      <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2">
+                      <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
                         First Name *
                       </label>
                       <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                          <User className="h-5 w-5 text-gray-400" />
+                          <User className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
                         </div>
                         <input
                           id="firstName"
@@ -252,25 +252,25 @@ const Signup = () => {
                           type="text"
                           value={formData.firstName}
                           onChange={handleChange}
-                          className={`block w-full pl-10 pr-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
+                          className={`block w-full pl-9 sm:pl-10 pr-3 py-2.5 sm:py-3 text-sm sm:text-base border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
                             errors.firstName ? 'border-red-500' : 'border-gray-300'
                           }`}
                           placeholder="John"
                         />
                       </div>
                       {errors.firstName && (
-                        <p className="mt-1 text-sm text-red-600">{errors.firstName}</p>
+                        <p className="mt-1 text-xs sm:text-sm text-red-600">{errors.firstName}</p>
                       )}
                     </div>
 
                     {/* Middle Name */}
                     <div>
-                      <label htmlFor="middleName" className="block text-sm font-medium text-gray-700 mb-2">
+                      <label htmlFor="middleName" className="block text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
                         Middle Name
                       </label>
                       <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                          <User className="h-5 w-5 text-gray-400" />
+                          <User className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
                         </div>
                         <input
                           id="middleName"
@@ -278,20 +278,20 @@ const Signup = () => {
                           type="text"
                           value={formData.middleName}
                           onChange={handleChange}
-                          className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                          className="block w-full pl-9 sm:pl-10 pr-3 py-2.5 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                           placeholder="Michael"
                         />
                       </div>
                     </div>
 
                     {/* Last Name */}
-                    <div>
-                      <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-2">
+                    <div className="sm:col-span-2 md:col-span-1">
+                      <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
                         Last Name *
                       </label>
                       <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                          <User className="h-5 w-5 text-gray-400" />
+                          <User className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
                         </div>
                         <input
                           id="lastName"
@@ -299,14 +299,14 @@ const Signup = () => {
                           type="text"
                           value={formData.lastName}
                           onChange={handleChange}
-                          className={`block w-full pl-10 pr-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
+                          className={`block w-full pl-9 sm:pl-10 pr-3 py-2.5 sm:py-3 text-sm sm:text-base border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
                             errors.lastName ? 'border-red-500' : 'border-gray-300'
                           }`}
                           placeholder="Doe"
                         />
                       </div>
                       {errors.lastName && (
-                        <p className="mt-1 text-sm text-red-600">{errors.lastName}</p>
+                        <p className="mt-1 text-xs sm:text-sm text-red-600">{errors.lastName}</p>
                       )}
                     </div>
                   </div>
@@ -369,20 +369,20 @@ const Signup = () => {
 
                   {/* Account Type Selection */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-2 sm:mb-3">
                       Account Type *
                     </label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                       <button
                         type="button"
                         onClick={() => setFormData({ ...formData, accountType: 'organizer' })}
-                        className={`p-4 border-2 rounded-lg transition-all text-left ${
+                        className={`p-3 sm:p-4 border-2 rounded-lg transition-all text-left ${
                           formData.accountType === 'organizer'
                             ? 'border-blue-500 bg-blue-50'
                             : 'border-gray-200 hover:border-gray-300'
                         }`}
                       >
-                        <div className="font-semibold text-gray-900 mb-1">Event Organizer</div>
+                        <div className="font-semibold text-gray-900 text-sm sm:text-base mb-0.5 sm:mb-1">Event Organizer</div>
                         <div className="text-xs text-gray-600">
                           Create and manage events, access analytics, manage participants
                         </div>
@@ -390,13 +390,13 @@ const Signup = () => {
                       <button
                         type="button"
                         onClick={() => setFormData({ ...formData, accountType: 'user' })}
-                        className={`p-4 border-2 rounded-lg transition-all text-left ${
+                        className={`p-3 sm:p-4 border-2 rounded-lg transition-all text-left ${
                           formData.accountType === 'user'
                             ? 'border-blue-500 bg-blue-50'
                             : 'border-gray-200 hover:border-gray-300'
                         }`}
                       >
-                        <div className="font-semibold text-gray-900 mb-1">Regular User</div>
+                        <div className="font-semibold text-gray-900 text-sm sm:text-base mb-0.5 sm:mb-1">Regular User</div>
                         <div className="text-xs text-gray-600">
                           Browse events and register as a participant
                         </div>
@@ -406,16 +406,16 @@ const Signup = () => {
 
                   {/* Event Interests/Preferences Selection */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-3">
-                      What events interest you? <span className="text-gray-500 text-xs">(Optional - helps us personalize recommendations)</span>
+                    <label className="block text-sm font-medium text-gray-700 mb-2 sm:mb-3">
+                      What events interest you? <span className="text-gray-500 text-xs block sm:inline">(Optional - helps us personalize recommendations)</span>
                     </label>
                     
                     {/* Category Selection */}
-                    <div className="mb-4">
+                    <div className="mb-3 sm:mb-4">
                       <label className="block text-xs font-medium text-gray-600 mb-2">
                         Preferred Categories (Select up to 3)
                       </label>
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-1.5 sm:gap-2">
                         {['Academic Conference', 'Tech Summit', 'Community Event', 'Workshop', 'Seminar', 'Networking', 'Cultural Event', 'Sports Event'].map((category) => (
                           <button
                             key={category}
@@ -428,7 +428,7 @@ const Signup = () => {
                                 setFormData({ ...formData, selectedCategories: [...current, category] });
                               }
                             }}
-                            className={`px-3 py-1.5 text-sm rounded-full border transition-all ${
+                            className={`px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm rounded-full border transition-all ${
                               formData.selectedCategories.includes(category)
                                 ? 'bg-blue-100 border-blue-500 text-blue-700'
                                 : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'

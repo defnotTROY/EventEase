@@ -94,22 +94,22 @@ const Login = () => {
     <div className="min-h-screen bg-white relative overflow-hidden w-full">
       {/* Navigation Bar */}
       <nav className="bg-white border-b border-gray-200 sticky top-0 z-50 relative">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-14 sm:h-16">
             <Link to="/" className="flex items-center">
-              <Calendar className="h-8 w-8 text-primary-600 mr-2" />
-              <span className="text-2xl font-bold text-gray-900">{appConfig.name}</span>
+              <Calendar className="h-6 w-6 sm:h-8 sm:w-8 text-primary-600 mr-1.5 sm:mr-2" />
+              <span className="text-lg sm:text-2xl font-bold text-gray-900">{appConfig.name}</span>
             </Link>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 sm:space-x-4">
               <Link
                 to="/login"
-                className="text-gray-700 hover:text-primary-600 px-4 py-2 font-medium transition-colors"
+                className="text-gray-700 hover:text-primary-600 px-2 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base font-medium transition-colors"
               >
                 Sign In
               </Link>
               <Link
                 to="/signup"
-                className="bg-primary-600 text-white px-6 py-2 rounded-lg hover:bg-primary-700 font-medium transition-colors"
+                className="bg-primary-600 text-white px-3 sm:px-6 py-1.5 sm:py-2 text-sm sm:text-base rounded-lg hover:bg-primary-700 font-medium transition-colors"
               >
                 Get Started
               </Link>
@@ -119,8 +119,8 @@ const Login = () => {
       </nav>
 
       {/* Subtle background logo */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div className="text-[#3B82F6] opacity-5 text-[20rem] font-black tracking-wider select-none">
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
+        <div className="text-[#3B82F6] opacity-5 text-[6rem] sm:text-[12rem] md:text-[16rem] lg:text-[20rem] font-black tracking-wider select-none whitespace-nowrap">
           EVENTEASE
         </div>
       </div>
@@ -239,7 +239,7 @@ const Login = () => {
                   </div>
 
                   {/* Remember Me & Forgot Password */}
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
                     <div className="flex items-center">
                       <input
                         id="remember-me"

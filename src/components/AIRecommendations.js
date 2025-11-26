@@ -90,15 +90,15 @@ const AIRecommendations = ({ user: propUser }) => {
 
   return (
     <div className="card">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center">
-          <Sparkles className="text-primary-600 mr-3" size={24} />
-          <h3 className="text-lg font-semibold text-gray-900">AI Event Recommendations</h3>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-4 sm:mb-6">
+        <div className="flex items-center min-w-0 flex-1">
+          <Sparkles className="text-primary-600 mr-2 sm:mr-3 flex-shrink-0" size={20} />
+          <h3 className="text-base sm:text-lg font-semibold text-gray-900 break-words">AI Event Recommendations</h3>
         </div>
         <button
           onClick={loadRecommendations}
           disabled={loading}
-          className="btn-secondary text-sm"
+          className="btn-secondary text-sm whitespace-nowrap flex-shrink-0 self-start sm:self-auto"
         >
           {loading ? (
             <Loader2 className="animate-spin mr-2" size={16} />
@@ -140,25 +140,25 @@ const AIRecommendations = ({ user: propUser }) => {
           <div className="space-y-4">
             {recommendations.recommendations?.map((rec, index) => (
               <div key={index} className="border border-gray-200 rounded-lg p-4 hover:border-primary-300 transition-colors">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1">
-                    <h4 className="font-semibold text-gray-900 mb-1">{rec.title}</h4>
-                    <p className="text-sm text-gray-600 mb-2">{rec.reason}</p>
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-semibold text-gray-900 mb-1 break-words">{rec.title}</h4>
+                    <p className="text-sm text-gray-600 mb-2 break-words">{rec.reason}</p>
                     
-                    <div className="flex items-center space-x-4 text-xs text-gray-500">
+                    <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs text-gray-500">
                       <div className="flex items-center">
-                        <Calendar size={14} className="mr-1" />
+                        <Calendar size={14} className="mr-1 flex-shrink-0" />
                         <span>Event</span>
                       </div>
                       <div className="flex items-center">
-                        <Users size={14} className="mr-1" />
+                        <Users size={14} className="mr-1 flex-shrink-0" />
                         <span>Recommended</span>
                       </div>
                     </div>
                   </div>
                   
-                  <div className="flex flex-col items-end space-y-2">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getConfidenceColor(rec.confidence)}`}>
+                  <div className="flex flex-row sm:flex-col items-start sm:items-end gap-2 sm:space-y-2 flex-shrink-0">
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap ${getConfidenceColor(rec.confidence)}`}>
                       {getConfidenceText(rec.confidence)} Confidence
                     </span>
                     <div className="flex items-center text-sm text-gray-600">
@@ -181,18 +181,18 @@ const AIRecommendations = ({ user: propUser }) => {
                   </div>
                 )}
 
-                <div className="mt-4 flex space-x-2">
+                <div className="mt-4 flex flex-wrap gap-2">
                   <button 
                     onClick={() => rec.eventId && navigate(`/events/${rec.eventId}`)}
                     disabled={!rec.eventId}
-                    className="btn-primary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="btn-primary text-sm disabled:opacity-50 disabled:cursor-not-allowed flex-1 sm:flex-initial"
                   >
                     View Event
                   </button>
                   <button 
                     onClick={() => rec.eventId && navigate(`/events/${rec.eventId}`)}
                     disabled={!rec.eventId}
-                    className="btn-secondary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="btn-secondary text-sm disabled:opacity-50 disabled:cursor-not-allowed flex-1 sm:flex-initial"
                   >
                     Register
                   </button>

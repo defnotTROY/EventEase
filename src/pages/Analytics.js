@@ -3,9 +3,6 @@ import {
   TrendingUp, 
   Users, 
   Calendar, 
-  MapPin, 
-  BarChart3, 
-  PieChart, 
   Activity,
   Download,
   Filter,
@@ -15,7 +12,6 @@ import {
 } from 'lucide-react';
 import { analyticsService } from '../services/analyticsService';
 import { discoverabilityService } from '../services/discoverabilityService';
-import AIRecommendations from '../components/AIRecommendations';
 import AIScheduler from '../components/AIScheduler';
 import AIFeedbackAnalysis from '../components/AIFeedbackAnalysis';
 import { auth } from '../lib/supabase';
@@ -34,9 +30,6 @@ const Analytics = () => {
   const [engagementData, setEngagementData] = useState([]);
   const [categoryPerformance, setCategoryPerformance] = useState([]);
   const [aiInsights, setAiInsights] = useState([]);
-  const [demographics, setDemographics] = useState(null);
-  const [registrationSources, setRegistrationSources] = useState(null);
-  const [satisfaction, setSatisfaction] = useState(null);
   const [periodOptions, setPeriodOptions] = useState([]);
   const [discoverabilityScore, setDiscoverabilityScore] = useState(null);
   const [loadingDiscoverability, setLoadingDiscoverability] = useState(false);
@@ -147,9 +140,6 @@ const Analytics = () => {
         trendData,
         categoryData,
         insights,
-        demoData,
-        sourcesData,
-        satisfactionData,
         periodsList
       ] = await Promise.all([
         analyticsService.getOverviewStats(),
@@ -157,9 +147,6 @@ const Analytics = () => {
         analyticsService.getEngagementTrend(selectedPeriod),
         analyticsService.getCategoryPerformance(),
         analyticsService.getAIInsights(),
-        analyticsService.getParticipantDemographics(),
-        analyticsService.getRegistrationSources(),
-        analyticsService.getEventSatisfaction(),
         analyticsService.getAvailablePeriods()
       ]);
 
@@ -169,9 +156,6 @@ const Analytics = () => {
       setEngagementData(trendData);
       setCategoryPerformance(categoryData);
       setAiInsights(insights);
-      setDemographics(demoData);
-      setRegistrationSources(sourcesData);
-      setSatisfaction(satisfactionData);
       setPeriodOptions(periodsList);
 
       if (periodsList.length > 0 && !periodsList.some(period => period.id === selectedPeriod)) {
@@ -196,25 +180,25 @@ const Analytics = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Analytics</h1>
-          <p className="text-gray-600 mt-1">AI-powered insights and performance metrics for your events</p>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 break-words">Analytics</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1 break-words">AI-powered insights and performance metrics for your events</p>
         </div>
-        <div className="flex space-x-3">
+        <div className="flex flex-wrap gap-2 sm:gap-3">
           <button 
-            className="btn-secondary flex items-center"
+            className="btn-secondary flex items-center text-sm sm:text-base"
             onClick={loadAnalyticsData}
             disabled={loading}
           >
-            <Filter size={20} className="mr-2" />
-            Refresh
+            <Filter size={18} className="mr-2 flex-shrink-0" />
+            <span>Refresh</span>
           </button>
-          <button className="btn-primary flex items-center">
-            <Download size={20} className="mr-2" />
-            Export Report
+          <button className="btn-primary flex items-center text-sm sm:text-base">
+            <Download size={18} className="mr-2 flex-shrink-0" />
+            <span>Export Report</span>
           </button>
         </div>
       </div>
@@ -466,9 +450,6 @@ const Analytics = () => {
 
           {/* AI-Powered Features */}
           <div className="space-y-6">
-            {/* AI Recommendations */}
-            <AIRecommendations user={user} />
-            
             {/* AI Scheduler */}
             {selectedEvent !== 'all' && (
               <AIScheduler eventId={selectedEvent} />
@@ -516,142 +497,6 @@ const Analytics = () => {
             )}
           </div>
 
-          {/* Detailed Metrics */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Participant Demographics */}
-            <div className="card">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Participant Demographics</h3>
-              {demographics && demographics.demographics && demographics.demographics.length > 0 ? (
-                <div className="space-y-4">
-                  <div className="text-center mb-4">
-                    <div className="text-2xl font-bold text-primary-600">{demographics.totalParticipants}</div>
-                    <div className="text-sm text-gray-600">Total Participants</div>
-                  </div>
-                  {demographics.demographics.map((demo, index) => {
-                    const colors = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-orange-500'];
-                    return (
-                      <div key={index}>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-600">Age {demo.ageGroup}</span>
-                          <span className="text-sm font-medium text-gray-900">{demo.percentage}%</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div 
-                            className={`h-2 rounded-full ${colors[index % colors.length]}`} 
-                            style={{ width: `${demo.percentage}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <p>No demographic data available</p>
-                  <p className="text-xs mt-2">Add age information to participants to see demographics</p>
-                </div>
-              )}
-            </div>
-
-            {/* Registration Sources */}
-            <div className="card">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Registration Sources</h3>
-              {registrationSources && registrationSources.sources.length > 0 ? (
-                <div className="space-y-4">
-                  {registrationSources.sources.map((source, index) => {
-                    const colors = ['bg-primary-500', 'bg-green-500', 'bg-orange-500', 'bg-purple-500', 'bg-blue-500'];
-                    return (
-                      <div key={index}>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-600">{source.source}</span>
-                          <span className="text-sm font-medium text-gray-900">{source.percentage}%</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div 
-                            className={`${colors[index % colors.length]} h-2 rounded-full`} 
-                            style={{ width: `${source.percentage}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  No registration source data available
-                </div>
-              )}
-            </div>
-
-            {/* Event Satisfaction */}
-            <div className="card">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Event Satisfaction</h3>
-              {satisfaction && !satisfaction.isEmpty ? (
-                <>
-                  <div className="text-center">
-                    <div className="text-3xl font-bold text-primary-600 mb-2">
-                      {satisfaction.averageRating.toFixed(1)}/5
-                    </div>
-                    <div className="flex justify-center mb-4">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <div 
-                          key={star} 
-                          className={`w-5 h-5 rounded-full mx-1 ${
-                            star <= Math.round(satisfaction.averageRating) 
-                              ? 'bg-yellow-400' 
-                              : 'bg-gray-300'
-                          }`}
-                        ></div>
-                      ))}
-                    </div>
-                    <p className="text-sm text-gray-600">
-                      Based on {satisfaction.totalRatings} {satisfaction.totalRatings === 1 ? 'rating' : 'ratings'}
-                    </p>
-                  </div>
-                  <div className="mt-4 space-y-2">
-                    {satisfaction.distribution.map((dist, index) => (
-                      <div key={index} className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">
-                          {dist.rating === 5 ? 'Excellent (5)' :
-                           dist.rating === 4 ? 'Good (4)' :
-                           dist.rating === 3 ? 'Average (3)' :
-                           dist.rating === 2 ? 'Fair (2)' : 'Poor (1)'}
-                        </span>
-                        <span className="font-medium text-gray-900">{dist.percentage}%</span>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  No satisfaction ratings available yet
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Quick Actions */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <button className="flex flex-col items-center p-4 border border-gray-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-colors">
-                <BarChart3 className="text-primary-600 mb-2" size={24} />
-                <span className="text-sm font-medium text-gray-900">Generate Report</span>
-              </button>
-              <button className="flex flex-col items-center p-4 border border-gray-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-colors">
-                <Download className="text-primary-600 mb-2" size={24} />
-                <span className="text-sm font-medium text-gray-900">Export Data</span>
-              </button>
-              <button className="flex flex-col items-center p-4 border border-gray-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-colors">
-                <Eye className="text-primary-600 mb-2" size={24} />
-                <span className="text-sm font-medium text-gray-900">View Details</span>
-              </button>
-              <button className="flex flex-col items-center p-4 border border-gray-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-colors">
-                <Sparkles className="text-primary-600 mb-2" size={24} />
-                <span className="text-sm font-medium text-gray-900">AI Insights</span>
-              </button>
-            </div>
-          </div>
         </>
       )}
     </div>

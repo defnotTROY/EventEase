@@ -325,25 +325,26 @@ const EventView = () => {
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
+        <div className="mb-6 sm:mb-8">
+          <div className="flex flex-col gap-4">
+            {/* Title Row */}
+            <div className="flex items-start space-x-3 sm:space-x-4">
               <button
                 onClick={() => navigate('/events')}
-                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0 mt-1"
               >
                 <ArrowLeft size={20} />
               </button>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">{event.title}</h1>
-                <div className="flex items-center space-x-4 mt-2">
-                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(currentStatus)}`}>
+              <div className="min-w-0 flex-1">
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 break-words">{event.title}</h1>
+                <div className="flex flex-wrap items-center gap-2 mt-2">
+                  <span className={`inline-flex items-center px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${getStatusColor(currentStatus)}`}>
                     {getStatusIcon(currentStatus)}
                     <span className="ml-1 capitalize">{currentStatus}</span>
                   </span>
                   {event.category && (
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
-                      <Tag className="w-4 h-4 mr-1" />
+                    <span className="inline-flex items-center px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium bg-gray-100 text-gray-800">
+                      <Tag className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                       {event.category}
                     </span>
                   )}
@@ -351,10 +352,49 @@ const EventView = () => {
               </div>
             </div>
             
-            <div className="flex items-center space-x-3">
+            {/* Action Buttons */}
+            <div className="flex flex-wrap items-center gap-2 pl-11 sm:pl-14">
+              {/* Mobile: Icon-only buttons */}
               <button
                 onClick={() => setShowQRCode(!showQRCode)}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors flex items-center"
+                className="sm:hidden p-2.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                title="QR Code"
+              >
+                <QrCode size={18} />
+              </button>
+              
+              <button
+                onClick={handleShareEvent}
+                className="sm:hidden p-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                title="Share"
+              >
+                <Share2 size={18} />
+              </button>
+              
+              {isOwner && (
+                <>
+                  <button
+                    onClick={() => navigate(`/events/${event.id}/edit`)}
+                    className="sm:hidden p-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    title="Edit"
+                  >
+                    <Edit size={18} />
+                  </button>
+                  
+                  <button
+                    onClick={handleDeleteEvent}
+                    className="sm:hidden p-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                    title="Delete"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </>
+              )}
+
+              {/* Desktop: Full buttons */}
+              <button
+                onClick={() => setShowQRCode(!showQRCode)}
+                className="hidden sm:flex px-3 lg:px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors items-center text-sm"
               >
                 <QrCode size={16} className="mr-2" />
                 QR Code
@@ -362,7 +402,7 @@ const EventView = () => {
               
               <button
                 onClick={handleShareEvent}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center"
+                className="hidden sm:flex px-3 lg:px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors items-center text-sm"
               >
                 <Share2 size={16} className="mr-2" />
                 Share
@@ -372,7 +412,7 @@ const EventView = () => {
                 <>
                   <button
                     onClick={() => navigate(`/events/${event.id}/edit`)}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center"
+                    className="hidden sm:flex px-3 lg:px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors items-center text-sm"
                   >
                     <Edit size={16} className="mr-2" />
                     Edit
@@ -380,7 +420,7 @@ const EventView = () => {
                   
                   <button
                     onClick={handleDeleteEvent}
-                    className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors flex items-center"
+                    className="hidden sm:flex px-3 lg:px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors items-center text-sm"
                   >
                     <Trash2 size={16} className="mr-2" />
                     Delete
@@ -403,7 +443,7 @@ const EventView = () => {
         {/* Verification Required Modal */}
         {showVerificationModal && (
           <div 
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] px-4"
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-3 sm:p-4"
             onClick={(e) => {
               if (e.target === e.currentTarget) {
                 setShowVerificationModal(false);
@@ -411,31 +451,31 @@ const EventView = () => {
             }}
           >
             <div 
-              className="bg-white rounded-lg p-6 max-w-md w-full relative"
+              className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-[calc(100vw-24px)] sm:max-w-md max-h-[90vh] overflow-y-auto relative"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center">
-                  <AlertCircle className="text-yellow-500 mr-3" size={24} />
-                  <h3 className="text-lg font-semibold">Verification Required</h3>
+              <div className="flex items-start justify-between mb-4 gap-3">
+                <div className="flex items-start sm:items-center min-w-0">
+                  <AlertCircle className="text-yellow-500 mr-2 sm:mr-3 flex-shrink-0 mt-0.5 sm:mt-0" size={20} />
+                  <h3 className="text-base sm:text-lg font-semibold">Verification Required</h3>
                 </div>
                 <button
                   onClick={() => setShowVerificationModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-gray-400 hover:text-gray-600 p-1 flex-shrink-0"
                 >
                   <X size={20} />
                 </button>
               </div>
               
-              <div className="mb-6">
-                <p className="text-gray-700 mb-4">
+              <div className="mb-4 sm:mb-6">
+                <p className="text-sm sm:text-base text-gray-700 mb-3 sm:mb-4">
                   You need to verify your identity before you can register for events. This helps ensure a safe and secure experience for all participants.
                 </p>
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                  <p className="text-sm text-blue-800">
-                    <strong>What you need to do:</strong>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
+                  <p className="text-xs sm:text-sm text-blue-800 font-medium">
+                    What you need to do:
                   </p>
-                  <ul className="text-sm text-blue-700 mt-2 space-y-1 list-disc list-inside">
+                  <ul className="text-xs sm:text-sm text-blue-700 mt-2 space-y-1 list-disc list-inside">
                     <li>Go to your Settings page</li>
                     <li>Navigate to the Verification section</li>
                     <li>Upload a valid ID document</li>
@@ -444,10 +484,10 @@ const EventView = () => {
                 </div>
               </div>
 
-              <div className="flex space-x-3">
+              <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3">
                 <button
                   onClick={() => setShowVerificationModal(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                  className="flex-1 px-4 py-2.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors"
                 >
                   Cancel
                 </button>
@@ -456,7 +496,7 @@ const EventView = () => {
                     setShowVerificationModal(false);
                     navigate('/settings?tab=verification');
                   }}
-                  className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors"
+                  className="flex-1 px-4 py-2.5 sm:py-2 text-sm sm:text-base bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors"
                 >
                   Go to Verification
                 </button>
@@ -468,7 +508,7 @@ const EventView = () => {
         {/* Registration Form Modal */}
         {showRegistrationForm && !isAdmin && (
           <div 
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] px-4"
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-3 sm:p-4"
             onClick={(e) => {
               if (e.target === e.currentTarget) {
                 setShowRegistrationForm(false);
@@ -476,21 +516,21 @@ const EventView = () => {
             }}
           >
             <div 
-              className="bg-white rounded-lg p-6 max-w-md w-full relative"
+              className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-[calc(100vw-24px)] sm:max-w-md max-h-[90vh] overflow-y-auto relative"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">Register for Event</h3>
+                <h3 className="text-base sm:text-lg font-semibold">Register for Event</h3>
                 <button
                   onClick={() => setShowRegistrationForm(false)}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-gray-400 hover:text-gray-600 p-1"
                 >
                   <X size={20} />
                 </button>
               </div>
               
-              <form onSubmit={handleRegistrationSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+              <form onSubmit={handleRegistrationSubmit} className="space-y-3 sm:space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       First Name *
@@ -501,7 +541,7 @@ const EventView = () => {
                       value={registrationData.firstName}
                       onChange={handleRegistrationInputChange}
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     />
                   </div>
                   <div>
@@ -514,7 +554,7 @@ const EventView = () => {
                       value={registrationData.lastName}
                       onChange={handleRegistrationInputChange}
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     />
                   </div>
                 </div>
@@ -529,7 +569,7 @@ const EventView = () => {
                     value={registrationData.email}
                     onChange={handleRegistrationInputChange}
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   />
                 </div>
                 
@@ -542,22 +582,22 @@ const EventView = () => {
                     name="phone"
                     value={registrationData.phone}
                     onChange={handleRegistrationInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   />
                 </div>
                 
-                <div className="flex space-x-3 pt-4">
+                <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 pt-3 sm:pt-4">
                   <button
                     type="button"
                     onClick={() => setShowRegistrationForm(false)}
-                    className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                    className="flex-1 px-4 py-2.5 sm:py-2 text-sm sm:text-base bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={registering}
-                    className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center justify-center"
+                    className="flex-1 px-4 py-2.5 sm:py-2 text-sm sm:text-base bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center justify-center"
                   >
                     {registering ? (
                       <>

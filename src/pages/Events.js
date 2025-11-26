@@ -260,93 +260,94 @@ const Events = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Events</h1>
-          <p className="text-gray-600 mt-1">Manage and monitor all your events in one place</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 break-words">Events</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">Manage and monitor all your events in one place</p>
         </div>
       </div>
 
-
-
       {/* Filters and Search */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div className="flex flex-col lg:flex-row gap-4">
-          {/* Search */}
-          <div className="flex-1">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+        <div className="flex flex-col gap-3 sm:gap-4">
+          {/* Search - Full width on all screens */}
+          <div className="w-full">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
               <input
                 type="text"
                 placeholder="Search events..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               />
             </div>
           </div>
 
-          {/* Category Filter */}
-          <div className="lg:w-48">
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            >
-              {categoryOptions.map(category => (
-                <option key={category} value={category}>
-                  {category === 'all' ? 'All Categories' : category}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Filters Row */}
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+            {/* Category Filter */}
+            <div className="flex-1 sm:flex-initial sm:w-44 lg:w-48">
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              >
+                {categoryOptions.map(category => (
+                  <option key={category} value={category}>
+                    {category === 'all' ? 'All Categories' : category}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          {/* Status Filter */}
-          <div className="lg:w-48">
-            <select
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            >
-              {statusOptions.map(status => (
-                <option key={status.value} value={status.value}>
-                  {status.label}
-                </option>
-              ))}
-            </select>
-          </div>
+            {/* Status Filter */}
+            <div className="flex-1 sm:flex-initial sm:w-44 lg:w-48">
+              <select
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              >
+                {statusOptions.map(status => (
+                  <option key={status.value} value={status.value}>
+                    {status.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          {/* View Mode Toggle */}
-          <div className="flex border border-gray-300 rounded-lg overflow-hidden">
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`px-3 py-2 text-sm font-medium ${
-                viewMode === 'grid' 
-                  ? 'bg-primary-600 text-white' 
-                  : 'bg-white text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              Grid
-            </button>
-            <button
-              onClick={() => setViewMode('list')}
-              className={`px-3 py-2 text-sm font-medium ${
-                viewMode === 'list' 
-                  ? 'bg-primary-600 text-white' 
-                  : 'bg-white text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              List
-            </button>
+            {/* View Mode Toggle */}
+            <div className="flex border border-gray-300 rounded-lg overflow-hidden self-start">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`px-3 py-2 text-sm font-medium ${
+                  viewMode === 'grid' 
+                    ? 'bg-primary-600 text-white' 
+                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                Grid
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`px-3 py-2 text-sm font-medium ${
+                  viewMode === 'list' 
+                    ? 'bg-primary-600 text-white' 
+                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                List
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Events Grid */}
       {viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {filteredEvents.map((event) => (
             <div 
               key={event.id} 
@@ -354,97 +355,91 @@ const Events = () => {
               onClick={() => navigate(`/events/${event.id}`)}
             >
               {/* Event Image */}
-              <div className="relative h-48 bg-gray-200">
+              <div className="relative h-40 sm:h-48 bg-gray-200">
                 <img
                   src={getEventImageUrl(event, 480)}
                   alt={event.title}
                   className="w-full h-full object-cover"
                 />
-                <div className="absolute top-3 right-3">
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(statusService.calculateEventStatus(event))}`}>
+                <div className="absolute top-2 right-2 sm:top-3 sm:right-3">
+                  <span className={`inline-flex px-2 py-1 text-[10px] sm:text-xs font-semibold rounded-full ${getStatusColor(statusService.calculateEventStatus(event))}`}>
                     {statusService.calculateEventStatus(event)}
                   </span>
                 </div>
               </div>
 
               {/* Event Content */}
-              <div className="p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-primary-600 transition-colors">
+              <div className="p-4 sm:p-6">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-primary-600 transition-colors">
                   {event.title}
                 </h3>
-                <p className="text-gray-600 text-sm mb-4 line-clamp-2">{event.description}</p>
+                <p className="text-gray-600 text-xs sm:text-sm mb-3 sm:mb-4 line-clamp-2">{event.description}</p>
                 
-                <div className="space-y-2 mb-4">
-                  <div className="flex items-center text-sm text-gray-500">
-                    <Calendar size={16} className="mr-2" />
-                    {formatDate(event.date)} • {formatTime(event.time)}
+                <div className="space-y-1.5 sm:space-y-2 mb-3 sm:mb-4">
+                  <div className="flex items-center text-xs sm:text-sm text-gray-500">
+                    <Calendar size={14} className="mr-2 flex-shrink-0" />
+                    <span className="truncate">{formatDate(event.date)} • {formatTime(event.time)}</span>
                   </div>
-                  <div className="flex items-center text-sm text-gray-500">
-                    <MapPin size={16} className="mr-2" />
-                    {event.location}
+                  <div className="flex items-center text-xs sm:text-sm text-gray-500">
+                    <MapPin size={14} className="mr-2 flex-shrink-0" />
+                    <span className="truncate">{event.location}</span>
                   </div>
-                  <div className="flex items-center text-sm text-gray-500">
-                    <Users size={16} className="mr-2" />
-                    {participantCounts[event.id] || 0}/{event.max_participants || '∞'} participants
-                  </div>
-                  <div className="flex items-center text-sm text-gray-500">
-                    <span className="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
-                    {statusService.getAutomationInfo().description}
+                  <div className="flex items-center text-xs sm:text-sm text-gray-500">
+                    <Users size={14} className="mr-2 flex-shrink-0" />
+                    <span>{participantCounts[event.id] || 0}/{event.max_participants || '∞'} participants</span>
                   </div>
                 </div>
 
                 {/* Registration Progress */}
                 {event.max_participants && (
-                  <div className="mb-4">
-                    <div className="flex justify-between text-sm text-gray-600 mb-2">
-                      <span className="font-medium">Registration Progress</span>
+                  <div className="mb-3 sm:mb-4">
+                    <div className="flex justify-between text-xs sm:text-sm text-gray-600 mb-1 sm:mb-2">
+                      <span className="font-medium">Registration</span>
                       <span className="font-semibold">{getParticipantPercentage(participantCounts[event.id] || 0, event.max_participants)}%</span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-4">
+                    <div className="w-full bg-gray-200 rounded-full h-2 sm:h-3">
                       <div 
-                        className="bg-primary-600 h-4 rounded-full transition-all duration-500"
+                        className="bg-primary-600 h-2 sm:h-3 rounded-full transition-all duration-500"
                         style={{ width: `${getParticipantPercentage(participantCounts[event.id] || 0, event.max_participants)}%` }}
                       ></div>
                     </div>
-                    <div className="flex justify-between text-xs text-gray-500 mt-1">
+                    <div className="flex justify-between text-[10px] sm:text-xs text-gray-500 mt-1">
                       <span>{participantCounts[event.id] || 0} registered</span>
-                      <span>{event.max_participants} capacity</span>
+                      <span>{event.max_participants} max</span>
                     </div>
                   </div>
                 )}
 
                 {/* Action Buttons */}
                 <div 
-                  className="flex items-center justify-between"
+                  className="flex items-center justify-start gap-1"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <div className="flex space-x-2">
-                    <button 
-                      onClick={() => navigate(`/events/${event.id}`)}
-                      className="p-2 text-gray-600 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
-                      title="View Event"
-                    >
-                      <Eye size={16} />
-                    </button>
-                    {canManageEvent(event) && (
-                      <>
-                        <button 
-                          onClick={() => navigate(`/events/${event.id}/edit`)}
-                          className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                          title="Edit Event"
-                        >
-                          <Edit size={16} />
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteEvent(event.id)}
-                          className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Delete Event"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </>
-                    )}
-                  </div>
+                  <button 
+                    onClick={() => navigate(`/events/${event.id}`)}
+                    className="p-2 text-gray-600 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                    title="View Event"
+                  >
+                    <Eye size={16} />
+                  </button>
+                  {canManageEvent(event) && (
+                    <>
+                      <button 
+                        onClick={() => navigate(`/events/${event.id}/edit`)}
+                        className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="Edit Event"
+                      >
+                        <Edit size={16} />
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteEvent(event.id)}
+                        className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Delete Event"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -453,8 +448,8 @@ const Events = () => {
       ) : (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
           <div className="flex flex-col lg:flex-row">
-            <div className="lg:w-1/2 border-b lg:border-b-0 lg:border-r border-gray-200">
-              <div className="max-h-[560px] overflow-y-auto">
+            <div className="w-full lg:w-1/2 border-b lg:border-b-0 lg:border-r border-gray-200">
+              <div className="max-h-[70vh] lg:max-h-[560px] overflow-y-auto">
                 {filteredEvents.map((event) => {
                   const isSelected = selectedEvent?.id === event.id;
 
@@ -574,53 +569,50 @@ const Events = () => {
               </div>
             </div>
 
-            <div className="lg:w-1/2">
+            <div className="hidden lg:block lg:w-1/2">
               {selectedEvent ? (
-                <div className="p-6 space-y-5">
-                  <div className="relative h-56 bg-gray-100 rounded-lg overflow-hidden">
+                <div className="p-4 sm:p-6 space-y-4 sm:space-y-5">
+                  <div className="relative h-44 sm:h-56 bg-gray-100 rounded-lg overflow-hidden">
                     <img
                       src={getEventImageUrl(selectedEvent, 640)}
                       alt={selectedEvent.title}
                       className="w-full h-full object-cover"
                     />
-                    <div className="absolute top-4 right-4">
-                      <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(statusService.calculateEventStatus(selectedEvent))}`}>
+                    <div className="absolute top-3 right-3 sm:top-4 sm:right-4">
+                      <span className={`inline-flex px-2 sm:px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(statusService.calculateEventStatus(selectedEvent))}`}>
                         {statusService.calculateEventStatus(selectedEvent)}
                       </span>
                     </div>
                   </div>
 
                   <div>
-                    <h2 className="text-2xl font-bold text-gray-900">{selectedEvent.title}</h2>
-                    <p className="text-gray-600 mt-2 leading-relaxed">{selectedEvent.description}</p>
+                    <h2 className="text-xl sm:text-2xl font-bold text-gray-900 break-words">{selectedEvent.title}</h2>
+                    <p className="text-sm sm:text-base text-gray-600 mt-2 leading-relaxed break-words">{selectedEvent.description}</p>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
-                      <Calendar size={20} className="text-primary-600 mt-1" />
-                      <div>
-                        <p className="text-xs uppercase text-gray-500">Schedule</p>
-                        <p className="text-sm font-semibold text-gray-800">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    <div className="flex items-start gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg">
+                      <Calendar size={18} className="text-primary-600 mt-0.5 flex-shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-[10px] sm:text-xs uppercase text-gray-500">Schedule</p>
+                        <p className="text-xs sm:text-sm font-semibold text-gray-800">
                           {formatDate(selectedEvent.date)}
                         </p>
-                        <p className="text-sm text-gray-600">{formatTime(selectedEvent.time)}</p>
+                        <p className="text-xs sm:text-sm text-gray-600">{formatTime(selectedEvent.time)}</p>
                       </div>
                     </div>
-                    <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
-                      <MapPin size={20} className="text-primary-600 mt-1" />
-                      <div>
-                        <p className="text-xs uppercase text-gray-500">Location</p>
-                        <p className="text-sm font-semibold text-gray-800">{selectedEvent.location}</p>
-                        {selectedEvent.venue_details && (
-                          <p className="text-sm text-gray-600">{selectedEvent.venue_details}</p>
-                        )}
+                    <div className="flex items-start gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg">
+                      <MapPin size={18} className="text-primary-600 mt-0.5 flex-shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-[10px] sm:text-xs uppercase text-gray-500">Location</p>
+                        <p className="text-xs sm:text-sm font-semibold text-gray-800 break-words">{selectedEvent.location}</p>
                       </div>
                     </div>
-                    <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
-                      <Users size={20} className="text-primary-600 mt-1" />
-                      <div className="w-full">
-                        <p className="text-xs uppercase text-gray-500">Participants</p>
-                        <p className="text-sm font-semibold text-gray-800">
+                    <div className="flex items-start gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg">
+                      <Users size={18} className="text-primary-600 mt-0.5 flex-shrink-0" />
+                      <div className="w-full min-w-0">
+                        <p className="text-[10px] sm:text-xs uppercase text-gray-500">Participants</p>
+                        <p className="text-xs sm:text-sm font-semibold text-gray-800">
                           {participantCounts[selectedEvent.id] || 0}/{selectedEvent.max_participants || '∞'}
                         </p>
                         {selectedEvent.max_participants && (
@@ -631,53 +623,50 @@ const Events = () => {
                                 style={{ width: `${getParticipantPercentage(participantCounts[selectedEvent.id] || 0, selectedEvent.max_participants)}%` }}
                               ></div>
                             </div>
-                            <p className="text-xs text-gray-500 mt-1">
-                              {participantCounts[selectedEvent.id] || 0} registered
-                            </p>
                           </div>
                         )}
                       </div>
                     </div>
-                    <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
-                      <QrCode size={20} className="text-primary-600 mt-1" />
-                      <div>
-                        <p className="text-xs uppercase text-gray-500">Status Automation</p>
-                        <p className="text-sm text-gray-600">{statusService.getAutomationInfo().description}</p>
+                    <div className="flex items-start gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg">
+                      <QrCode size={18} className="text-primary-600 mt-0.5 flex-shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-[10px] sm:text-xs uppercase text-gray-500">Status</p>
+                        <p className="text-xs sm:text-sm text-gray-600 break-words">{statusService.getAutomationInfo().description}</p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap gap-3">
+                  <div className="flex flex-wrap gap-2 sm:gap-3">
                     <button
                       onClick={() => navigate(`/events/${selectedEvent.id}`)}
-                      className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-primary-600 rounded-lg hover:bg-primary-700"
+                      className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white bg-primary-600 rounded-lg hover:bg-primary-700"
                     >
-                      <Eye size={18} />
-                      View Full Event Page
+                      <Eye size={16} />
+                      <span>View Details</span>
                     </button>
                     {canManageEvent(selectedEvent) && (
                       <>
                         <button
                           onClick={() => navigate(`/events/${selectedEvent.id}/edit`)}
-                          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100"
+                          className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100"
                         >
-                          <Edit size={18} />
-                          Edit Event
+                          <Edit size={16} />
+                          <span>Edit</span>
                         </button>
                         <button
                           onClick={() => handleDeleteEvent(selectedEvent.id)}
-                          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-red-600 bg-red-50 rounded-lg hover:bg-red-100"
+                          className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-red-600 bg-red-50 rounded-lg hover:bg-red-100"
                         >
-                          <Trash2 size={18} />
-                          Delete Event
+                          <Trash2 size={16} />
+                          <span>Delete</span>
                         </button>
                       </>
                     )}
                   </div>
                 </div>
               ) : (
-                <div className="p-10 text-center text-gray-500">
-                  Select an event from the list to preview its full details here.
+                <div className="p-8 sm:p-10 text-center text-gray-500">
+                  <p className="text-sm sm:text-base">Select an event from the list to preview its full details here.</p>
                 </div>
               )}
             </div>

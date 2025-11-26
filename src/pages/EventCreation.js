@@ -293,7 +293,7 @@ const EventCreation = () => {
     switch (currentStep) {
       case 1:
         return (
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Event Title *
@@ -303,7 +303,7 @@ const EventCreation = () => {
                 name="title"
                 value={formData.title}
                 onChange={handleInputChange}
-                className="input-field"
+                className="input-field w-full"
                 placeholder="Enter event title"
                 required
               />
@@ -318,7 +318,7 @@ const EventCreation = () => {
                 value={formData.description}
                 onChange={handleInputChange}
                 rows={4}
-                className="input-field"
+                className="input-field w-full"
                 placeholder="Describe your event..."
                 required
               />
@@ -334,7 +334,7 @@ const EventCreation = () => {
                   name="date"
                   value={formData.date}
                   onChange={handleInputChange}
-                  className="input-field"
+                  className="input-field w-full"
                   required
                 />
               </div>
@@ -342,12 +342,12 @@ const EventCreation = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Time *
                 </label>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap sm:flex-nowrap gap-2">
                   <select
                     name="timeHour"
                     value={formData.timeHour}
                     onChange={handleInputChange}
-                    className="input-field w-20"
+                    className="input-field flex-1 min-w-[60px] sm:w-20 sm:flex-initial"
                     required
                   >
                     {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map(hour => (
@@ -359,7 +359,7 @@ const EventCreation = () => {
                     name="timeMinute"
                     value={formData.timeMinute}
                     onChange={handleInputChange}
-                    className="input-field w-20"
+                    className="input-field flex-1 min-w-[60px] sm:w-20 sm:flex-initial"
                     required
                   >
                     {['00', '15', '30', '45'].map(minute => (
@@ -370,7 +370,7 @@ const EventCreation = () => {
                     name="timePeriod"
                     value={formData.timePeriod}
                     onChange={handleInputChange}
-                    className="input-field w-20"
+                    className="input-field flex-1 min-w-[60px] sm:w-20 sm:flex-initial"
                     required
                   >
                     <option value="AM">AM</option>
@@ -388,7 +388,7 @@ const EventCreation = () => {
                 name="category"
                 value={formData.category}
                 onChange={handleInputChange}
-                className="input-field"
+                className="input-field w-full"
                 required
               >
                 <option value="">Select category</option>
@@ -402,18 +402,18 @@ const EventCreation = () => {
 
       case 2:
         return (
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Location * <span className="text-xs text-gray-500 font-normal">(Philippines only)</span>
               </label>
-                              <LocationSearch
-                  value={formData.location}
-                  onChange={(location) => setFormData({ ...formData, location })}
-                  placeholder="Search for specific venues, buildings, or addresses..."
-                  required
-                />
-              <p className="mt-2 text-xs text-gray-500">
+              <LocationSearch
+                value={formData.location}
+                onChange={(location) => setFormData({ ...formData, location })}
+                placeholder="Search for specific venues, buildings, or addresses..."
+                required
+              />
+              <p className="mt-2 text-xs text-gray-500 break-words">
                 Start typing to search for specific venues, buildings, or addresses (e.g., "SM Megamall", "Ayala Center", "123 Rizal Avenue").
               </p>
             </div>
@@ -428,7 +428,7 @@ const EventCreation = () => {
                   name="maxParticipants"
                   value={formData.maxParticipants}
                   onChange={handleInputChange}
-                  className="input-field"
+                  className="input-field w-full"
                   placeholder="Enter max participants"
                 />
               </div>
@@ -445,7 +445,7 @@ const EventCreation = () => {
                       e.target.value = '';
                     }
                   }}
-                  className="input-field"
+                  className="input-field w-full"
                   placeholder="Press Enter to add tags"
                 />
               </div>
@@ -479,13 +479,13 @@ const EventCreation = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Event Image
               </label>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 sm:p-6 text-center">
                 {imagePreview ? (
                   <div className="space-y-4">
                     <img
                       src={imagePreview}
                       alt="Event preview"
-                      className="mx-auto h-32 w-48 object-cover rounded-lg"
+                      className="mx-auto h-24 sm:h-32 w-36 sm:w-48 object-cover rounded-lg"
                     />
                     <div className="flex justify-center space-x-2">
                       <button
@@ -502,7 +502,7 @@ const EventCreation = () => {
                   </div>
                 ) : (
                   <>
-                    <Upload className="mx-auto h-12 w-12 text-gray-400" />
+                    <Upload className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-gray-400" />
                     <div className="mt-4">
                       <input
                         type="file"
@@ -514,7 +514,7 @@ const EventCreation = () => {
                       />
                       <label
                         htmlFor="image-upload"
-                        className={`cursor-pointer px-4 py-2 rounded-lg ${
+                        className={`cursor-pointer inline-block px-4 py-2 rounded-lg text-sm sm:text-base ${
                           imageUploading 
                             ? 'bg-gray-400 text-white cursor-not-allowed' 
                             : 'bg-primary-600 text-white hover:bg-primary-700'
@@ -530,7 +530,7 @@ const EventCreation = () => {
                         )}
                       </label>
                     </div>
-                    <p className="mt-2 text-sm text-gray-500">
+                    <p className="mt-2 text-xs sm:text-sm text-gray-500">
                       PNG, JPG, GIF up to 5MB
                     </p>
                   </>
@@ -571,7 +571,7 @@ const EventCreation = () => {
 
       case 3:
         return (
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Requirements
@@ -581,7 +581,7 @@ const EventCreation = () => {
                 value={formData.requirements}
                 onChange={handleInputChange}
                 rows={3}
-                className="input-field"
+                className="input-field w-full"
                 placeholder="Any special requirements for participants..."
               />
             </div>
@@ -596,7 +596,7 @@ const EventCreation = () => {
                   name="contactEmail"
                   value={formData.contactEmail}
                   onChange={handleInputChange}
-                  className="input-field"
+                  className="input-field w-full"
                   placeholder="contact@example.com"
                   required
                 />
@@ -610,19 +610,19 @@ const EventCreation = () => {
                   name="contactPhone"
                   value={formData.contactPhone}
                   onChange={handleInputChange}
-                  className="input-field"
+                  className="input-field w-full"
                   placeholder="+1 (555) 123-4567"
                 />
               </div>
             </div>
 
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <h4 className="font-medium text-blue-900 mb-2">AI-Powered Suggestions</h4>
+            <div className="bg-blue-50 p-3 sm:p-4 rounded-lg">
+              <h4 className="font-medium text-blue-900 mb-2 text-sm sm:text-base">AI-Powered Suggestions</h4>
               <ul className="space-y-2">
                 {aiSuggestions.map((suggestion, index) => (
-                  <li key={index} className="flex items-start space-x-2 text-sm text-blue-800">
-                    <Sparkles size={16} className="text-blue-600 mt-0.5 flex-shrink-0" />
-                    <span>{suggestion}</span>
+                  <li key={index} className="flex items-start space-x-2 text-xs sm:text-sm text-blue-800">
+                    <Sparkles size={14} className="text-blue-600 mt-0.5 flex-shrink-0" />
+                    <span className="break-words">{suggestion}</span>
                   </li>
                 ))}
               </ul>
@@ -632,26 +632,30 @@ const EventCreation = () => {
 
       case 4:
         return (
-          <div className="space-y-6">
-            <div className="bg-gray-50 p-6 rounded-lg">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Event Preview</h3>
+          <div className="space-y-4 sm:space-y-6">
+            <div className="bg-gray-50 p-4 sm:p-6 rounded-lg">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Event Preview</h3>
               <div className="space-y-4">
                 <div>
-                  <h4 className="font-medium text-gray-900">{formData.title || 'Event Title'}</h4>
-                  <p className="text-sm text-gray-600">{formData.description || 'Event description will appear here...'}</p>
+                  <h4 className="font-medium text-gray-900 break-words">{formData.title || 'Event Title'}</h4>
+                  <p className="text-sm text-gray-600 break-words">{formData.description || 'Event description will appear here...'}</p>
                 </div>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="font-medium text-gray-700">Date:</span> {formData.date || 'Not set'}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-sm">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-1">
+                    <span className="font-medium text-gray-700">Date:</span>
+                    <span className="text-gray-600">{formData.date || 'Not set'}</span>
                   </div>
-                  <div>
-                    <span className="font-medium text-gray-700">Time:</span> {formData.timeHour}:{formData.timeMinute} {formData.timePeriod}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-1">
+                    <span className="font-medium text-gray-700">Time:</span>
+                    <span className="text-gray-600">{formData.timeHour}:{formData.timeMinute} {formData.timePeriod}</span>
                   </div>
-                  <div>
-                    <span className="font-medium text-gray-700">Location:</span> {formData.location || 'Not set'}
+                  <div className="flex flex-col sm:flex-row sm:items-start gap-1">
+                    <span className="font-medium text-gray-700">Location:</span>
+                    <span className="text-gray-600 break-words">{formData.location || 'Not set'}</span>
                   </div>
-                  <div>
-                    <span className="font-medium text-gray-700">Category:</span> {formData.category || 'Not set'}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-1">
+                    <span className="font-medium text-gray-700">Category:</span>
+                    <span className="text-gray-600">{formData.category || 'Not set'}</span>
                   </div>
                 </div>
               </div>
@@ -661,16 +665,16 @@ const EventCreation = () => {
               <input
                 type="checkbox"
                 id="publish-now"
-                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded flex-shrink-0"
               />
               <label htmlFor="publish-now" className="text-sm font-medium text-gray-700">
                 Publish event immediately
               </label>
             </div>
 
-            <div className="bg-yellow-50 p-4 rounded-lg">
-              <h4 className="font-medium text-yellow-900 mb-2">Before Publishing</h4>
-              <ul className="text-sm text-yellow-800 space-y-1">
+            <div className="bg-yellow-50 p-3 sm:p-4 rounded-lg">
+              <h4 className="font-medium text-yellow-900 mb-2 text-sm sm:text-base">Before Publishing</h4>
+              <ul className="text-xs sm:text-sm text-yellow-800 space-y-1">
                 <li>• Review all event details carefully</li>
                 <li>• Ensure contact information is correct</li>
                 <li>• Check that date and time are accurate</li>
@@ -686,27 +690,27 @@ const EventCreation = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Create New Event</h1>
-          <p className="text-gray-600 mt-1">Set up your event with AI-powered suggestions and smart features</p>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 sm:gap-0">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 break-words">Create New Event</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1 break-words">Set up your event with AI-powered suggestions and smart features</p>
         </div>
-        <div className="flex space-x-3">
+        <div className="flex flex-wrap gap-2 sm:gap-3">
           <button
             onClick={() => setPreviewMode(!previewMode)}
-            className="btn-secondary flex items-center"
+            className="btn-secondary flex items-center text-sm sm:text-base"
           >
-            <Eye size={20} className="mr-2" />
-            {previewMode ? 'Edit Mode' : 'Preview'}
+            <Eye size={18} className="mr-2 flex-shrink-0" />
+            <span>{previewMode ? 'Edit Mode' : 'Preview'}</span>
           </button>
           <button 
             onClick={() => navigate('/events')}
-            className="btn-secondary flex items-center"
+            className="btn-secondary flex items-center text-sm sm:text-base"
           >
-            <Save size={20} className="mr-2" />
-            Cancel
+            <Save size={18} className="mr-2 flex-shrink-0" />
+            <span>Cancel</span>
           </button>
         </div>
       </div>
@@ -752,69 +756,86 @@ const EventCreation = () => {
       )}
 
       {/* Progress Steps */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center justify-between mb-6">
-          {steps.map((step, index) => (
-            <div key={step.number} className="flex items-center">
-              <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
-                currentStep >= step.number
-                  ? 'border-primary-500 bg-primary-500 text-white'
-                  : 'border-gray-300 text-gray-500'
-              }`}>
-                {currentStep > step.number ? (
-                  <span className="text-sm font-medium">✓</span>
-                ) : (
-                  <step.icon size={20} />
-                )}
-              </div>
-              {index < steps.length - 1 && (
-                <div className={`w-16 h-0.5 mx-4 ${
-                  currentStep > step.number ? 'bg-primary-500' : 'bg-gray-300'
-                }`} />
-              )}
-            </div>
-          ))}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+        {/* Mobile: Vertical steps indicator */}
+        <div className="sm:hidden mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-gray-600">Step {currentStep} of {steps.length}</span>
+            <span className="text-sm font-medium text-primary-600">{steps[currentStep - 1].title}</span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div 
+              className="bg-primary-500 h-2 rounded-full transition-all duration-300" 
+              style={{ width: `${(currentStep / steps.length) * 100}%` }}
+            />
+          </div>
         </div>
 
-        <div className="text-center">
-          <h2 className="text-xl font-semibold text-gray-900">
-            {steps[currentStep - 1].title}
-          </h2>
-          <p className="text-gray-600 mt-1">
-            Step {currentStep} of {steps.length}
-          </p>
+        {/* Desktop: Horizontal steps */}
+        <div className="hidden sm:block">
+          <div className="flex items-center justify-between mb-6">
+            {steps.map((step, index) => (
+              <div key={step.number} className="flex items-center">
+                <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
+                  currentStep >= step.number
+                    ? 'border-primary-500 bg-primary-500 text-white'
+                    : 'border-gray-300 text-gray-500'
+                }`}>
+                  {currentStep > step.number ? (
+                    <span className="text-sm font-medium">✓</span>
+                  ) : (
+                    <step.icon size={20} />
+                  )}
+                </div>
+                {index < steps.length - 1 && (
+                  <div className={`w-12 lg:w-16 h-0.5 mx-2 lg:mx-4 ${
+                    currentStep > step.number ? 'bg-primary-500' : 'bg-gray-300'
+                  }`} />
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="text-center">
+            <h2 className="text-xl font-semibold text-gray-900">
+              {steps[currentStep - 1].title}
+            </h2>
+            <p className="text-gray-600 mt-1">
+              Step {currentStep} of {steps.length}
+            </p>
+          </div>
         </div>
       </div>
 
       {/* Form Content */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
         <form onSubmit={handleSubmit}>
           {renderStepContent()}
 
           {/* Navigation Buttons */}
-          <div className="flex justify-between mt-8 pt-6 border-t border-gray-200">
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-between gap-3 mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-gray-200">
             <button
               type="button"
               onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
               disabled={currentStep === 1}
-              className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
             >
               Previous
             </button>
 
-            <div className="flex space-x-3">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
               {currentStep < steps.length ? (
                 <button
                   type="button"
                   onClick={() => setCurrentStep(currentStep + 1)}
-                  className="btn-primary"
+                  className="btn-primary w-full sm:w-auto"
                 >
                   Next Step
                 </button>
               ) : (
                 <button 
                   type="submit" 
-                  className="btn-primary flex items-center"
+                  className="btn-primary flex items-center justify-center w-full sm:w-auto"
                   disabled={loading}
                 >
                   {loading ? (

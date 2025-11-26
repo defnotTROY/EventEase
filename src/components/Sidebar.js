@@ -295,7 +295,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
       {showUserQRModal && (
         <div 
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-50 px-4"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-50 p-3 sm:p-4"
           onClick={(e) => {
             // Close modal when clicking outside the modal content
             if (e.target === e.currentTarget) {
@@ -304,35 +304,37 @@ const Sidebar = ({ isOpen, onClose }) => {
           }}
         >
           <div 
-            className="bg-white rounded-lg shadow-xl w-full max-w-lg overflow-hidden relative"
+            className="bg-white rounded-lg shadow-xl w-full max-w-[calc(100vw-24px)] sm:max-w-md max-h-[90vh] overflow-y-auto relative"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Your Check-in QR</h3>
-                <p className="text-sm text-gray-500">Use this code to check in to any EventEase event.</p>
+            {/* Header */}
+            <div className="flex items-start justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 gap-3">
+              <div className="min-w-0">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900">Your Check-in QR</h3>
+                <p className="text-xs sm:text-sm text-gray-500 mt-0.5">Use this code to check in to any EventEase event.</p>
               </div>
               <button
                 onClick={() => setShowUserQRModal(false)}
-                className="p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                className="p-1.5 sm:p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 flex-shrink-0"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <div className="px-6 py-6">
+            {/* Content */}
+            <div className="px-4 sm:px-6 py-4 sm:py-6">
               {userQRLoading && (
-                <div className="flex flex-col items-center justify-center py-12 text-gray-500">
+                <div className="flex flex-col items-center justify-center py-8 sm:py-12 text-gray-500">
                   <Loader2 className="animate-spin mb-3" size={24} />
-                  Generating your QR code...
+                  <span className="text-sm sm:text-base">Generating your QR code...</span>
                 </div>
               )}
 
               {!userQRLoading && userQRError && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                  <div className="flex items-start gap-3">
-                    <AlertCircle className="text-red-500" size={20} />
-                    <div className="text-sm text-red-700">
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4">
+                  <div className="flex items-start gap-2 sm:gap-3">
+                    <AlertCircle className="text-red-500 flex-shrink-0 mt-0.5" size={18} />
+                    <div className="text-xs sm:text-sm text-red-700">
                       <p className="font-medium mb-2">{userQRError}</p>
                       <button
                         onClick={generateUserQRCode}
@@ -346,37 +348,40 @@ const Sidebar = ({ isOpen, onClose }) => {
               )}
 
               {!userQRLoading && !userQRError && userQRData && (
-                <div className="space-y-6">
+                <div className="space-y-4 sm:space-y-6">
+                  {/* QR Code Display */}
                   <div className="text-center">
-                    <div className="bg-white p-6 rounded-lg border-2 border-gray-200 inline-block">
+                    <div className="bg-white p-3 sm:p-6 rounded-lg border-2 border-gray-200 inline-block">
                       <img
                         src={userQRData.dataURL}
                         alt="User QR Code"
-                        className="w-56 h-56 mx-auto"
+                        className="w-40 h-40 sm:w-48 sm:h-48 mx-auto"
                       />
                     </div>
-                    <p className="mt-4 text-sm text-gray-500">
+                    <p className="mt-3 sm:mt-4 text-xs sm:text-sm text-gray-500 truncate px-2">
                       Linked to {user?.email}
                     </p>
                   </div>
 
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-900 space-y-1">
-                    <p><strong>User ID:</strong> {userQRData.userData?.userId}</p>
-                    <p><strong>Email:</strong> {userQRData.userData?.email}</p>
-                    <p><strong>Version:</strong> {userQRData.userData?.version}</p>
+                  {/* User Info */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 text-xs sm:text-sm text-blue-900 space-y-1">
+                    <p className="truncate"><strong>User ID:</strong> <span className="text-[10px] sm:text-xs break-all">{userQRData.userData?.userId}</span></p>
+                    <p className="truncate"><strong>Email:</strong> {userQRData.userData?.email}</p>
+                    <p><strong>Version:</strong> <span className="text-[10px] sm:text-xs">{userQRData.userData?.version}</span></p>
                   </div>
 
-                  <div className="flex flex-col sm:flex-row gap-3">
+                  {/* Action Buttons */}
+                  <div className="flex flex-col gap-2 sm:gap-3">
                     <button
                       onClick={handleDownloadUserQR}
-                      className="flex-1 inline-flex items-center justify-center px-4 py-2 text-sm font-semibold text-white bg-primary-600 rounded-lg hover:bg-primary-700"
+                      className="w-full inline-flex items-center justify-center px-4 py-2.5 sm:py-2 text-sm font-semibold text-white bg-primary-600 rounded-lg hover:bg-primary-700"
                     >
                       <Download size={16} className="mr-2" />
                       Download QR
                     </button>
                     <button
                       onClick={handleCopyUserQRData}
-                      className="flex-1 inline-flex items-center justify-center px-4 py-2 text-sm font-semibold text-primary-600 bg-primary-50 rounded-lg hover:bg-primary-100"
+                      className="w-full inline-flex items-center justify-center px-4 py-2.5 sm:py-2 text-sm font-semibold text-primary-600 bg-primary-50 rounded-lg hover:bg-primary-100"
                     >
                       {userQRCopied ? (
                         <>
@@ -392,8 +397,9 @@ const Sidebar = ({ isOpen, onClose }) => {
                     </button>
                   </div>
 
-                  <div className="p-4 bg-gray-50 rounded-lg text-sm text-gray-600">
-                    Keep this QR handy. It stays the same for every event, so you can reuse it for quick check-ins across EventEase.
+                  {/* Help Text */}
+                  <div className="p-3 sm:p-4 bg-gray-50 rounded-lg text-xs sm:text-sm text-gray-600">
+                    Keep this QR handy. It stays the same for every event, so you can reuse it for quick check-ins.
                   </div>
                 </div>
               )}

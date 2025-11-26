@@ -694,31 +694,32 @@ const AdminQRCheckIn = () => {
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
+        <div className="mb-4 sm:mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-                <QrCode className="mr-3 text-primary-600" size={32} />
-                QR Code Check-in
+              <h1 className="text-xl sm:text-3xl font-bold text-gray-900 flex items-center">
+                <QrCode className="mr-2 sm:mr-3 text-primary-600" size={24} />
+                <span className="sm:hidden">QR Check-in</span>
+                <span className="hidden sm:inline">QR Code Check-in</span>
               </h1>
-              <p className="text-gray-600 mt-2">
+              <p className="text-sm sm:text-base text-gray-600 mt-1 sm:mt-2">
                 {isAdmin 
                   ? 'Scan user QR codes to check them into any event' 
                   : 'Scan user QR codes to check them into your events'}
               </p>
             </div>
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center">
               {isAdmin ? (
               <button
                 onClick={() => navigate('/admin')}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                className="px-3 sm:px-4 py-1.5 sm:py-2 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
               >
                 Back to Admin
               </button>
               ) : (
                 <button
                   onClick={() => navigate('/dashboard')}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                  className="px-3 sm:px-4 py-1.5 sm:py-2 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
                 >
                   Back to Dashboard
                 </button>
@@ -728,15 +729,15 @@ const AdminQRCheckIn = () => {
         </div>
 
         {/* Event Selection */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-3">
-            <Calendar className="inline mr-2" size={18} />
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 mb-4 sm:mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-2 sm:mb-3">
+            <Calendar className="inline mr-1.5 sm:mr-2" size={16} />
             Select Event
           </label>
           <select
             value={selectedEventId}
             onChange={(e) => setSelectedEventId(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
           >
             <option value="">-- Select an event --</option>
             {events.map(event => {
@@ -757,9 +758,9 @@ const AdminQRCheckIn = () => {
           </select>
           
           {events.length === 0 && (
-            <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <p className="text-sm text-yellow-800">
-                <AlertCircle className="inline mr-2" size={16} />
+            <div className="mt-2 sm:mt-3 p-2 sm:p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-xs sm:text-sm text-yellow-800">
+                <AlertCircle className="inline mr-1.5 sm:mr-2" size={14} />
                 No events available for check-in. Events must be happening today or be ongoing to allow check-ins.
               </p>
             </div>
@@ -866,38 +867,38 @@ const AdminQRCheckIn = () => {
 
         {/* Action Buttons */}
         {selectedEventId && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-            <div className="flex flex-wrap gap-3">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 mb-4 sm:mb-6">
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-3">
               <button
                 onClick={() => setScannerOpen(true)}
-                className="flex items-center px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium"
+                className="flex items-center justify-center px-3 sm:px-6 py-2 sm:py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium text-xs sm:text-base"
                 disabled={!selectedEventId}
               >
-                <Camera size={20} className="mr-2" />
-                Scan QR Code
+                <Camera size={16} className="mr-1.5 sm:mr-2 flex-shrink-0" />
+                <span className="truncate">Scan QR</span>
               </button>
               <button
                 onClick={handleManualCheckIn}
-                className="flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+                className="flex items-center justify-center px-3 sm:px-6 py-2 sm:py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-xs sm:text-base"
                 disabled={!selectedEventId}
               >
-                <User size={20} className="mr-2" />
-                Manual Check-in
+                <User size={16} className="mr-1.5 sm:mr-2 flex-shrink-0" />
+                <span className="truncate">Manual</span>
               </button>
               <button
                 onClick={loadCheckedInParticipants}
-                className="flex items-center px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 font-medium"
+                className="flex items-center justify-center px-3 sm:px-6 py-2 sm:py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 font-medium text-xs sm:text-base"
               >
-                <RefreshCw size={20} className="mr-2" />
-                Refresh List
+                <RefreshCw size={16} className="mr-1.5 sm:mr-2 flex-shrink-0" />
+                <span className="truncate">Refresh</span>
               </button>
               {filteredParticipants.length > 0 && (
                 <button
                   onClick={exportCheckInList}
-                  className="flex items-center px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
+                  className="flex items-center justify-center px-3 sm:px-6 py-2 sm:py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium text-xs sm:text-base"
                 >
-                  <Download size={20} className="mr-2" />
-                  Export List
+                  <Download size={16} className="mr-1.5 sm:mr-2 flex-shrink-0" />
+                  <span className="truncate">Export</span>
                 </button>
               )}
             </div>
@@ -908,25 +909,25 @@ const AdminQRCheckIn = () => {
         {selectedEventId && (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200">
             {/* Filters and Search */}
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex flex-col lg:flex-row gap-4">
+            <div className="p-3 sm:p-6 border-b border-gray-200">
+              <div className="flex flex-col gap-3 sm:gap-4">
                 <div className="flex-1">
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
                     <input
                       type="text"
                       placeholder="Search by name or email..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex gap-2 sm:gap-3">
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}
-                    className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="flex-1 sm:flex-none px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                   >
                     <option value="time">Sort by Time</option>
                     <option value="name">Sort by Name</option>
@@ -934,7 +935,7 @@ const AdminQRCheckIn = () => {
                   </select>
                   <button
                     onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                    className="px-3 sm:px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
                     title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
                   >
                     {sortOrder === 'asc' ? '↑' : '↓'}
@@ -943,83 +944,118 @@ const AdminQRCheckIn = () => {
               </div>
             </div>
 
-            {/* Participants Table */}
+            {/* Participants Table/List */}
             <div className="overflow-x-auto">
               {filteredParticipants.length === 0 ? (
-                <div className="p-12 text-center">
-                  <Users className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                  <p className="text-gray-600">
+                <div className="p-6 sm:p-12 text-center">
+                  <Users className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-gray-400 mb-3 sm:mb-4" />
+                  <p className="text-sm sm:text-base text-gray-600">
                     {searchQuery ? 'No participants found matching your search.' : 'No participants checked in yet.'}
                   </p>
-                  <p className="text-sm text-gray-500 mt-2">
+                  <p className="text-xs sm:text-sm text-gray-500 mt-1.5 sm:mt-2">
                     Use the "Scan QR Code" button to check in participants.
                   </p>
                 </div>
               ) : (
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Name
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Email
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Phone
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Check-in Time
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredParticipants.map((participant) => (
-                      <tr key={participant.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="flex-shrink-0 h-10 w-10 bg-primary-100 rounded-full flex items-center justify-center">
-                              <User className="text-primary-600" size={20} />
-                            </div>
-                            <div className="ml-4">
-                              <div className="text-sm font-medium text-gray-900">
-                                {participant.first_name || ''} {participant.last_name || ''}
+                <>
+                  {/* Desktop Table */}
+                  <table className="w-full hidden sm:table">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Name
+                        </th>
+                        <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Email
+                        </th>
+                        <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">
+                          Phone
+                        </th>
+                        <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Check-in Time
+                        </th>
+                        <th className="px-4 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {filteredParticipants.map((participant) => (
+                        <tr key={participant.id} className="hover:bg-gray-50">
+                          <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div className="flex-shrink-0 h-8 w-8 sm:h-10 sm:w-10 bg-primary-100 rounded-full flex items-center justify-center">
+                                <User className="text-primary-600" size={16} />
+                              </div>
+                              <div className="ml-3 sm:ml-4">
+                                <div className="text-xs sm:text-sm font-medium text-gray-900">
+                                  {participant.first_name || ''} {participant.last_name || ''}
+                                </div>
                               </div>
                             </div>
+                          </td>
+                          <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                            <div className="text-xs sm:text-sm text-gray-900 flex items-center">
+                              <Mail size={14} className="mr-1.5 sm:mr-2 text-gray-400 flex-shrink-0" />
+                              <span className="truncate max-w-[120px] sm:max-w-none">{participant.email || 'N/A'}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 hidden lg:table-cell">
+                            {participant.phone || 'N/A'}
+                          </td>
+                          <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                            <div className="text-xs sm:text-sm text-gray-900 flex items-center">
+                              <Clock size={14} className="mr-1.5 sm:mr-2 text-gray-400 flex-shrink-0" />
+                              {new Date(participant.checkInTime).toLocaleString()}
+                            </div>
+                          </td>
+                          <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-right text-xs sm:text-sm font-medium">
+                            <button
+                              onClick={() => handleRemoveCheckIn(participant.id, participant.email)}
+                              className="text-red-600 hover:text-red-900 flex items-center ml-auto"
+                              title="Remove check-in"
+                            >
+                              <Trash2 size={14} className="mr-1" />
+                              <span className="hidden md:inline">Remove</span>
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  {/* Mobile Card List */}
+                  <div className="sm:hidden divide-y divide-gray-200">
+                    {filteredParticipants.map((participant) => (
+                      <div key={participant.id} className="p-4 hover:bg-gray-50">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-3 min-w-0 flex-1">
+                            <div className="flex-shrink-0 h-8 w-8 bg-primary-100 rounded-full flex items-center justify-center">
+                              <User className="text-primary-600" size={14} />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium text-gray-900 truncate">
+                                {participant.first_name || ''} {participant.last_name || ''}
+                              </p>
+                              <p className="text-xs text-gray-500 truncate mt-0.5">{participant.email || 'N/A'}</p>
+                              <p className="text-xs text-gray-400 mt-1 flex items-center">
+                                <Clock size={10} className="mr-1" />
+                                {new Date(participant.checkInTime).toLocaleString()}
+                              </p>
+                            </div>
                           </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900 flex items-center">
-                            <Mail size={16} className="mr-2 text-gray-400" />
-                            {participant.email || 'N/A'}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {participant.phone || 'N/A'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900 flex items-center">
-                            <Clock size={16} className="mr-2 text-gray-400" />
-                            {new Date(participant.checkInTime).toLocaleString()}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <button
                             onClick={() => handleRemoveCheckIn(participant.id, participant.email)}
-                            className="text-red-600 hover:text-red-900 flex items-center ml-auto"
+                            className="text-red-600 p-1.5 hover:bg-red-50 rounded-lg flex-shrink-0"
                             title="Remove check-in"
                           >
-                            <Trash2 size={16} className="mr-1" />
-                            Remove
+                            <Trash2 size={16} />
                           </button>
-                        </td>
-                      </tr>
+                        </div>
+                      </div>
                     ))}
-                  </tbody>
-                </table>
+                  </div>
+                </>
               )}
             </div>
 

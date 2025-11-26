@@ -318,38 +318,67 @@ const EventEdit = () => {
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
+        <div className="mb-6 sm:mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center space-x-3 sm:space-x-4 min-w-0">
               <button
                 onClick={() => navigate('/events')}
-                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
               >
                 <ArrowLeft size={20} />
               </button>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">Edit Event</h1>
-                <p className="text-gray-600 mt-1">Update your event details</p>
+              <div className="min-w-0">
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 break-words">Edit Event</h1>
+                <p className="text-sm sm:text-base text-gray-600 mt-1">Update your event details</p>
               </div>
             </div>
             
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center gap-2 sm:gap-3 pl-11 sm:pl-0">
+              {/* Mobile: Icon-only Preview button */}
               <button
                 onClick={() => setPreviewMode(!previewMode)}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                className={`sm:hidden p-2.5 rounded-lg font-medium transition-colors ${
+                  previewMode 
+                    ? 'bg-primary-600 text-white' 
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+                title={previewMode ? 'Edit Mode' : 'Preview'}
+              >
+                <Eye size={18} />
+              </button>
+              
+              {/* Desktop: Full Preview button */}
+              <button
+                onClick={() => setPreviewMode(!previewMode)}
+                className={`hidden sm:flex items-center px-4 py-2 rounded-lg font-medium transition-colors ${
                   previewMode 
                     ? 'bg-primary-600 text-white' 
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                 }`}
               >
-                <Eye size={16} className="inline mr-2" />
+                <Eye size={16} className="mr-2" />
                 {previewMode ? 'Edit Mode' : 'Preview'}
               </button>
               
+              {/* Mobile: Icon-only Save button */}
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="btn-primary flex items-center"
+                className="sm:hidden btn-primary p-2.5 flex items-center justify-center"
+                title="Save Changes"
+              >
+                {saving ? (
+                  <Loader2 size={18} className="animate-spin" />
+                ) : (
+                  <Save size={18} />
+                )}
+              </button>
+              
+              {/* Desktop: Full Save button */}
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="hidden sm:flex btn-primary items-center"
               >
                 {saving ? (
                   <Loader2 size={16} className="animate-spin mr-2" />
@@ -375,8 +404,8 @@ const EventEdit = () => {
         {/* Form Content */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
           {/* Basic Information */}
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Basic Information</h2>
+          <div className="p-4 sm:p-6 border-b border-gray-200">
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">Basic Information</h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="md:col-span-2">
@@ -426,12 +455,12 @@ const EventEdit = () => {
                   <Clock className="inline mr-1" size={16} />
                   Time
                 </label>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap sm:flex-nowrap gap-2">
                   <select
                     name="timeHour"
                     value={formData.timeHour}
                     onChange={handleInputChange}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent w-20"
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent flex-1 min-w-[60px] sm:w-20 sm:flex-initial"
                   >
                     {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map(hour => (
                       <option key={hour} value={hour}>{hour}</option>
@@ -442,7 +471,7 @@ const EventEdit = () => {
                     name="timeMinute"
                     value={formData.timeMinute}
                     onChange={handleInputChange}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent w-20"
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent flex-1 min-w-[60px] sm:w-20 sm:flex-initial"
                   >
                     {['00', '15', '30', '45'].map(minute => (
                       <option key={minute} value={minute}>{minute}</option>
@@ -452,7 +481,7 @@ const EventEdit = () => {
                     name="timePeriod"
                     value={formData.timePeriod}
                     onChange={handleInputChange}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent w-20"
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent flex-1 min-w-[60px] sm:w-20 sm:flex-initial"
                   >
                     <option value="AM">AM</option>
                     <option value="PM">PM</option>
@@ -493,8 +522,8 @@ const EventEdit = () => {
           </div>
 
           {/* Additional Details */}
-          <div className="p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Additional Details</h2>
+          <div className="p-4 sm:p-6">
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">Additional Details</h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>

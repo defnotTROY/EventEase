@@ -232,18 +232,18 @@ const AdminVerificationReview = () => {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Verification Review</h1>
-              <p className="text-gray-600 mt-1">Review and approve/reject user verification documents</p>
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-4 sm:py-6 gap-3 sm:gap-0">
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-3xl font-bold text-gray-900 truncate">Verification Review</h1>
+              <p className="text-sm sm:text-base text-gray-600 mt-0.5 sm:mt-1">Review and approve/reject user verification documents</p>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center flex-shrink-0">
               <button
                 onClick={loadVerifications}
-                className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                className="flex items-center px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
-                <RefreshCw className="h-4 w-4 mr-2" />
+                <RefreshCw className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
                 Refresh
               </button>
             </div>
@@ -251,37 +251,37 @@ const AdminVerificationReview = () => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
         {/* Filters */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 mb-4 sm:mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Search</label>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search by email, type..."
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Status Filter</label>
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Status Filter</label>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
                 <option value="pending">Pending</option>
                 <option value="under_review">Under Review</option>
                 <option value="all">All</option>
               </select>
             </div>
-            <div className="flex items-end">
-              <div className="text-sm text-gray-600">
+            <div className="flex items-end sm:col-span-2 md:col-span-1">
+              <div className="text-xs sm:text-sm text-gray-600">
                 <span className="font-medium">{filteredVerifications.length}</span> verification{filteredVerifications.length !== 1 ? 's' : ''} found
               </div>
             </div>
@@ -293,55 +293,55 @@ const AdminVerificationReview = () => {
           {filteredVerifications.length > 0 ? (
             <div className="divide-y divide-gray-200">
               {filteredVerifications.map((verification) => (
-                <div key={verification.id} className="p-6 hover:bg-gray-50 transition-colors">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-900">
+                <div key={verification.id} className="p-3 sm:p-6 hover:bg-gray-50 transition-colors">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-0">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:space-x-3 mb-2">
+                        <div className="min-w-0">
+                          <h3 className="text-base sm:text-lg font-semibold text-gray-900 truncate">
                             {verification.users?.name || verification.users?.email || verification.user_id?.substring(0, 8) || 'Unknown User'}
                           </h3>
                           {verification.users?.email && verification.users?.name && (
-                            <p className="text-sm text-gray-500">{verification.users.email}</p>
+                            <p className="text-xs sm:text-sm text-gray-500 truncate">{verification.users.email}</p>
                           )}
                         </div>
-                        <span className={`inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(verification.status)}`}>
+                        <span className={`inline-flex items-center px-2 py-0.5 sm:py-1 text-xs font-semibold rounded-full flex-shrink-0 w-fit ${getStatusColor(verification.status)}`}>
                           {getStatusIcon(verification.status)}
                           <span className="ml-1 capitalize">{verification.status.replace('_', ' ')}</span>
                         </span>
                       </div>
                       
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4 mt-3 sm:mt-4">
                         <div>
-                          <p className="text-xs text-gray-500 uppercase tracking-wide">Verification Type</p>
-                          <p className="text-sm font-medium text-gray-900 capitalize">{verification.verification_type}</p>
+                          <p className="text-xs text-gray-500 uppercase tracking-wide">Type</p>
+                          <p className="text-xs sm:text-sm font-medium text-gray-900 capitalize truncate">{verification.verification_type}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-gray-500 uppercase tracking-wide">Document Type</p>
-                          <p className="text-sm font-medium text-gray-900 capitalize">{verification.document_type.replace('_', ' ')}</p>
+                          <p className="text-xs text-gray-500 uppercase tracking-wide">Document</p>
+                          <p className="text-xs sm:text-sm font-medium text-gray-900 capitalize truncate">{verification.document_type.replace('_', ' ')}</p>
                         </div>
-                        <div>
+                        <div className="col-span-2 sm:col-span-1">
                           <p className="text-xs text-gray-500 uppercase tracking-wide">Submitted</p>
-                          <p className="text-sm font-medium text-gray-900">
+                          <p className="text-xs sm:text-sm font-medium text-gray-900">
                             {new Date(verification.created_at).toLocaleDateString()}
                           </p>
                         </div>
                       </div>
 
                       {verification.rejection_reason && (
-                        <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                          <p className="text-xs text-red-600 font-medium mb-1">Previous Rejection Reason:</p>
-                          <p className="text-sm text-red-800">{verification.rejection_reason}</p>
+                        <div className="mt-2 sm:mt-3 p-2 sm:p-3 bg-red-50 border border-red-200 rounded-lg">
+                          <p className="text-xs text-red-600 font-medium mb-0.5 sm:mb-1">Previous Rejection Reason:</p>
+                          <p className="text-xs sm:text-sm text-red-800">{verification.rejection_reason}</p>
                         </div>
                       )}
                     </div>
 
-                    <div className="ml-4 flex items-center space-x-2">
+                    <div className="sm:ml-4 flex items-center">
                       <button
                         onClick={() => handleViewVerification(verification)}
-                        className="flex items-center px-4 py-2 text-sm font-medium text-primary-600 bg-primary-50 border border-primary-200 rounded-lg hover:bg-primary-100 transition-colors"
+                        className="w-full sm:w-auto flex items-center justify-center px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-primary-600 bg-primary-50 border border-primary-200 rounded-lg hover:bg-primary-100 transition-colors"
                       >
-                        <Eye className="h-4 w-4 mr-2" />
+                        <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
                         Review
                       </button>
                     </div>
@@ -381,12 +381,12 @@ const AdminVerificationReview = () => {
           }}
         >
           <div 
-            className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto relative"
+            className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto relative mx-2 sm:mx-4"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-6 border-b border-gray-200">
+            <div className="p-4 sm:p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-gray-900">Review Verification</h2>
+                <h2 className="text-lg sm:text-2xl font-bold text-gray-900">Review Verification</h2>
                 <button
                   onClick={() => {
                     setReviewModalOpen(false);
@@ -400,23 +400,23 @@ const AdminVerificationReview = () => {
                   }}
                   className="text-gray-400 hover:text-gray-600"
                 >
-                  <XCircle size={24} />
+                  <XCircle size={20} />
                 </button>
               </div>
             </div>
 
-            <div className="p-6 space-y-6">
+            <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
               {/* User Information */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h3 className="font-semibold text-gray-900 mb-3">User Information</h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
+                <h3 className="font-semibold text-gray-900 text-sm sm:text-base mb-2 sm:mb-3">User Information</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm">
                   <div>
                     <p className="text-gray-500">Name</p>
-                    <p className="font-medium text-gray-900">{selectedVerification.users?.name || 'N/A'}</p>
+                    <p className="font-medium text-gray-900 break-words">{selectedVerification.users?.name || 'N/A'}</p>
                   </div>
                   <div>
                     <p className="text-gray-500">Email</p>
-                    <p className="font-medium text-gray-900">{selectedVerification.users?.email || 'N/A'}</p>
+                    <p className="font-medium text-gray-900 break-all">{selectedVerification.users?.email || 'N/A'}</p>
                   </div>
                   <div>
                     <p className="text-gray-500">Verification Type</p>
@@ -426,7 +426,7 @@ const AdminVerificationReview = () => {
                     <p className="text-gray-500">Document Type</p>
                     <p className="font-medium text-gray-900 capitalize">{selectedVerification.document_type.replace('_', ' ')}</p>
                   </div>
-                  <div>
+                  <div className="sm:col-span-2">
                     <p className="text-gray-500">Submitted</p>
                     <p className="font-medium text-gray-900">
                       {new Date(selectedVerification.created_at).toLocaleString()}
@@ -478,40 +478,40 @@ const AdminVerificationReview = () => {
               </div>
 
               {/* Review Actions */}
-              <div className="space-y-4">
-                <h3 className="font-semibold text-gray-900">Review Action</h3>
+              <div className="space-y-3 sm:space-y-4">
+                <h3 className="font-semibold text-gray-900 text-sm sm:text-base">Review Action</h3>
                 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
                   <button
                     onClick={() => setReviewData(prev => ({ ...prev, action: 'approve' }))}
-                    className={`p-4 border-2 rounded-lg transition-colors ${
+                    className={`p-3 sm:p-4 border-2 rounded-lg transition-colors ${
                       reviewData.action === 'approve'
                         ? 'border-green-500 bg-green-50'
                         : 'border-gray-200 hover:border-green-300'
                     }`}
                   >
-                    <div className="flex items-center space-x-3">
-                      <CheckCircle className={`h-6 w-6 ${reviewData.action === 'approve' ? 'text-green-600' : 'text-gray-400'}`} />
-                      <div className="text-left">
-                        <p className="font-semibold text-gray-900">Approve</p>
-                        <p className="text-sm text-gray-500">Verify this user's identity</p>
+                    <div className="flex items-center space-x-2 sm:space-x-3">
+                      <CheckCircle className={`h-5 w-5 sm:h-6 sm:w-6 flex-shrink-0 ${reviewData.action === 'approve' ? 'text-green-600' : 'text-gray-400'}`} />
+                      <div className="text-left min-w-0">
+                        <p className="font-semibold text-gray-900 text-sm sm:text-base">Approve</p>
+                        <p className="text-xs sm:text-sm text-gray-500">Verify this user's identity</p>
                       </div>
                     </div>
                   </button>
 
                   <button
                     onClick={() => setReviewData(prev => ({ ...prev, action: 'reject' }))}
-                    className={`p-4 border-2 rounded-lg transition-colors ${
+                    className={`p-3 sm:p-4 border-2 rounded-lg transition-colors ${
                       reviewData.action === 'reject'
                         ? 'border-red-500 bg-red-50'
                         : 'border-gray-200 hover:border-red-300'
                     }`}
                   >
-                    <div className="flex items-center space-x-3">
-                      <XCircle className={`h-6 w-6 ${reviewData.action === 'reject' ? 'text-red-600' : 'text-gray-400'}`} />
-                      <div className="text-left">
-                        <p className="font-semibold text-gray-900">Reject</p>
-                        <p className="text-sm text-gray-500">Reject this verification</p>
+                    <div className="flex items-center space-x-2 sm:space-x-3">
+                      <XCircle className={`h-5 w-5 sm:h-6 sm:w-6 flex-shrink-0 ${reviewData.action === 'reject' ? 'text-red-600' : 'text-gray-400'}`} />
+                      <div className="text-left min-w-0">
+                        <p className="font-semibold text-gray-900 text-sm sm:text-base">Reject</p>
+                        <p className="text-xs sm:text-sm text-gray-500">Reject this verification</p>
                       </div>
                     </div>
                   </button>
@@ -548,7 +548,7 @@ const AdminVerificationReview = () => {
               </div>
             </div>
 
-            <div className="p-6 border-t border-gray-200 flex justify-end space-x-3">
+            <div className="p-4 sm:p-6 border-t border-gray-200 flex flex-col sm:flex-row sm:justify-end gap-2 sm:space-x-3 sm:gap-0">
               <button
                 onClick={() => {
                   setReviewModalOpen(false);
@@ -560,7 +560,7 @@ const AdminVerificationReview = () => {
                     adminNotes: ''
                   });
                 }}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 order-2 sm:order-1"
                 disabled={processing}
               >
                 Cancel
@@ -568,14 +568,14 @@ const AdminVerificationReview = () => {
               <button
                 onClick={handleReview}
                 disabled={processing || !reviewData.action || (reviewData.action === 'reject' && !reviewData.rejectionReason.trim())}
-                className={`px-4 py-2 text-sm font-medium text-white rounded-lg ${
+                className={`w-full sm:w-auto px-4 py-2 text-sm font-medium text-white rounded-lg order-1 sm:order-2 ${
                   reviewData.action === 'approve'
                     ? 'bg-green-600 hover:bg-green-700'
                     : 'bg-red-600 hover:bg-red-700'
                 } disabled:opacity-50 disabled:cursor-not-allowed`}
               >
                 {processing ? (
-                  <div className="flex items-center">
+                  <div className="flex items-center justify-center">
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     Processing...
                   </div>
