@@ -6,7 +6,6 @@ import {
   Filter, 
   MoreVertical, 
   Edit, 
-  Trash2, 
   Eye, 
   Users,
   MapPin,
@@ -341,18 +340,6 @@ const AdminEventManagement = () => {
                           title="Edit Event"
                         >
                           <Edit className="h-4 w-4" />
-                        </button>
-                        <button
-                          className="text-yellow-600 hover:text-yellow-900"
-                          title="Event Analytics"
-                        >
-                          <BarChart3 className="h-4 w-4" />
-                        </button>
-                        <button
-                          className="text-red-600 hover:text-red-900"
-                          title="Delete Event"
-                        >
-                          <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
                     </td>

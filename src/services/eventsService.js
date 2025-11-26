@@ -6,14 +6,6 @@ export const eventsService = {
   // Get all events for the current user
   async getEvents(userId) {
     try {
-      // First, update all event statuses based on dates
-      try {
-        await supabase.rpc('update_all_event_statuses');
-      } catch (updateError) {
-        // Log but don't fail - status update is best effort
-        console.warn('Could not update event statuses:', updateError);
-      }
-
       const { data, error } = await supabase
         .from('events')
         .select('*')
@@ -31,14 +23,6 @@ export const eventsService = {
   // Get all public events (visible to everyone)
   async getAllEvents() {
     try {
-      // First, update all event statuses based on dates
-      try {
-        await supabase.rpc('update_all_event_statuses');
-      } catch (updateError) {
-        // Log but don't fail - status update is best effort
-        console.warn('Could not update event statuses:', updateError);
-      }
-
       const { data, error } = await supabase
         .from('events')
         .select('*')
@@ -55,14 +39,6 @@ export const eventsService = {
   // Get a single event by ID
   async getEvent(eventId) {
     try {
-      // First, update all event statuses based on dates
-      try {
-        await supabase.rpc('update_all_event_statuses');
-      } catch (updateError) {
-        // Log but don't fail - status update is best effort
-        console.warn('Could not update event statuses:', updateError);
-      }
-
       const { data, error } = await supabase
         .from('events')
         .select('*')
@@ -124,10 +100,14 @@ export const eventsService = {
       // Detect changes and notify participants
       if (oldEvent) {
         const changes = this.detectEventChanges(oldEvent, updatedEvent);
+        console.log('📝 Event update - Changes detected:', changes.length, changes);
         if (changes.length > 0) {
           // Notify all participants about the changes (async, don't wait)
+          console.log('📝 Triggering participant notifications...');
           this.notifyParticipantsOfEventUpdate(eventId, updatedEvent, changes)
             .catch(err => console.error('Error notifying participants:', err));
+        } else {
+          console.log('📝 No significant changes detected - skipping notifications');
         }
       }
 
@@ -191,19 +171,34 @@ export const eventsService = {
   // Notify all participants about event updates
   async notifyParticipantsOfEventUpdate(eventId, event, changes) {
     try {
+      console.log('📢 Starting notification process for event update:', eventId);
+      console.log('📢 Changes detected:', changes);
+
       // Get all participants for this event
-      const { data: participants, error: participantsError } = await supabase
+      // Note: We fetch all and filter in JS to handle NULL status from older registrations
+      const { data: allParticipants, error: participantsError } = await supabase
         .from('participants')
-        .select('user_id, email, first_name, last_name')
-        .eq('event_id', eventId)
-        .eq('status', 'registered'); // Only notify active registrations
+        .select('user_id, email, first_name, last_name, status')
+        .eq('event_id', eventId);
 
       if (participantsError) {
-        console.error('Error fetching participants:', participantsError);
+        console.error('❌ Error fetching participants:', participantsError);
         return;
       }
 
-      if (!participants || participants.length === 0) {
+      console.log('📢 All participants found:', allParticipants?.length || 0);
+      console.log('📢 Participant statuses:', allParticipants?.map(p => ({ user_id: p.user_id, status: p.status })));
+
+      // Filter to only exclude explicitly cancelled participants
+      // Include: null, undefined, 'registered', 'confirmed', 'pending', 'attended', 'checked_in', etc.
+      const participants = (allParticipants || []).filter(p => 
+        p.status !== 'cancelled' && p.status !== 'rejected'
+      );
+
+      console.log('📢 Active participants to notify:', participants.length);
+
+      if (participants.length === 0) {
+        console.log('📢 No participants to notify - skipping');
         return; // No participants to notify
       }
 
@@ -231,18 +226,37 @@ export const eventsService = {
         }
       }));
 
+      console.log('📢 Attempting to insert notifications:', notifications.length);
+
       // Insert all notifications in batch
-      const { error: notificationError } = await supabase
+      const { data: insertedData, error: notificationError } = await supabase
         .from('notifications')
-        .insert(notifications);
+        .insert(notifications)
+        .select();
 
       if (notificationError) {
-        console.error('Error creating notifications:', notificationError);
+        console.error('❌ Error creating notifications:', notificationError);
+        console.error('❌ Error details:', JSON.stringify(notificationError, null, 2));
+        
+        // If batch insert fails, try inserting one by one to identify the issue
+        console.log('📢 Trying individual inserts...');
+        for (const notification of notifications) {
+          const { error: singleError } = await supabase
+            .from('notifications')
+            .insert([notification]);
+          
+          if (singleError) {
+            console.error(`❌ Failed to notify user ${notification.user_id}:`, singleError.message);
+          } else {
+            console.log(`✅ Successfully notified user ${notification.user_id}`);
+          }
+        }
       } else {
-        console.log(`✅ Notified ${participants.length} participants about event update`);
+        console.log(`✅ Successfully notified ${participants.length} participants about event update`);
+        console.log('📢 Inserted notifications:', insertedData);
       }
     } catch (error) {
-      console.error('Error notifying participants:', error);
+      console.error('❌ Error in notifyParticipantsOfEventUpdate:', error);
     }
   },
 
@@ -355,7 +369,9 @@ export const eventsService = {
           first_name: participantData.firstName,
           last_name: participantData.lastName,
           email: participantData.email,
-          phone: participantData.phone
+          phone: participantData.phone,
+          status: 'registered',
+          registration_date: new Date().toISOString()
         }])
         .select()
         .single();
@@ -366,6 +382,23 @@ export const eventsService = {
       }
       
       console.log('Registration successful:', data);
+
+      // Create notification for the user
+      try {
+        const { data: event } = await supabase
+          .from('events')
+          .select('id, title, date, time, location')
+          .eq('id', eventId)
+          .single();
+        
+        if (event) {
+          await notificationService.createRegistrationNotification(participantData.userId, event);
+        }
+      } catch (notifError) {
+        console.warn('Could not create registration notification:', notifError);
+        // Don't fail registration if notification fails
+      }
+
       return { data, error: null };
     } catch (error) {
       console.error('Error registering for event:', error);

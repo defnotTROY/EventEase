@@ -18,7 +18,6 @@ import {
 import { auth } from '../lib/supabase';
 import { eventsService } from '../services/eventsService';
 import { statusService } from '../services/statusService';
-import autoStatusUpdateService from '../services/autoStatusUpdateService';
 import { useToast } from '../contexts/ToastContext';
 
 const Events = () => {
@@ -32,8 +31,18 @@ const Events = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
+  const [userRole, setUserRole] = useState(null);
   const [participantCounts, setParticipantCounts] = useState({});
   const [selectedEvent, setSelectedEvent] = useState(null);
+
+  // Check if user can edit/delete an event
+  const canManageEvent = (event) => {
+    if (!user) return false;
+    const isOrganizerOrAdmin = userRole === 'Organizer' || userRole === 'organizer' || 
+                                userRole === 'Administrator' || userRole === 'admin';
+    const isEventOwner = event.user_id === user.id;
+    return isOrganizerOrAdmin || isEventOwner;
+  };
 
   const statusOptions = useMemo(() => [
     { value: 'all', label: 'All Status' },
@@ -104,10 +113,9 @@ const Events = () => {
       try {
         const { user } = await auth.getCurrentUser();
         setUser(user);
+        setUserRole(user?.user_metadata?.role || null);
         if (user) {
           await loadEvents();
-          // Start automatic status updates
-          autoStatusUpdateService.start(user.id);
         }
       } catch (error) {
         console.error('Error getting user:', error);
@@ -118,21 +126,6 @@ const Events = () => {
     };
 
     getCurrentUser();
-
-    // Listen for automatic status updates
-    const handleStatusUpdate = () => {
-      if (user) {
-        loadEvents();
-      }
-    };
-
-    window.addEventListener('eventStatusUpdated', handleStatusUpdate);
-
-    // Cleanup on unmount
-    return () => {
-      autoStatusUpdateService.stop();
-      window.removeEventListener('eventStatusUpdated', handleStatusUpdate);
-    };
   }, []);
 
   // Load events from Supabase
@@ -433,20 +426,24 @@ const Events = () => {
                     >
                       <Eye size={16} />
                     </button>
-                    <button 
-                      onClick={() => navigate(`/events/${event.id}/edit`)}
-                      className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                      title="Edit Event"
-                    >
-                      <Edit size={16} />
-                    </button>
-                    <button 
-                      onClick={() => handleDeleteEvent(event.id)}
-                      className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      title="Delete Event"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                    {canManageEvent(event) && (
+                      <>
+                        <button 
+                          onClick={() => navigate(`/events/${event.id}/edit`)}
+                          className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="Edit Event"
+                        >
+                          <Edit size={16} />
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteEvent(event.id)}
+                          className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Delete Event"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -658,20 +655,24 @@ const Events = () => {
                       <Eye size={18} />
                       View Full Event Page
                     </button>
-                    <button
-                      onClick={() => navigate(`/events/${selectedEvent.id}/edit`)}
-                      className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100"
-                    >
-                      <Edit size={18} />
-                      Edit Event
-                    </button>
-                    <button
-                      onClick={() => handleDeleteEvent(selectedEvent.id)}
-                      className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-red-600 bg-red-50 rounded-lg hover:bg-red-100"
-                    >
-                      <Trash2 size={18} />
-                      Delete Event
-                    </button>
+                    {canManageEvent(selectedEvent) && (
+                      <>
+                        <button
+                          onClick={() => navigate(`/events/${selectedEvent.id}/edit`)}
+                          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100"
+                        >
+                          <Edit size={18} />
+                          Edit Event
+                        </button>
+                        <button
+                          onClick={() => handleDeleteEvent(selectedEvent.id)}
+                          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-red-600 bg-red-50 rounded-lg hover:bg-red-100"
+                        >
+                          <Trash2 size={18} />
+                          Delete Event
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               ) : (

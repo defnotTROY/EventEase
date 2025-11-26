@@ -20,6 +20,18 @@ class InsightsEngineService {
         throw new Error('User ID is required for personalized recommendations');
       }
 
+      // Get today's date in LOCAL timezone for filtering
+      const today = new Date();
+      const todayStr = this.getLocalDateString();
+
+      // Get user's signup preferences from metadata
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const userMetadata = currentUser?.user_metadata || {};
+      const signupCategories = userMetadata.selected_categories || [];
+      const signupTags = userMetadata.selected_tags || [];
+      
+      console.log('🎯 User signup preferences:', { signupCategories, signupTags });
+
       // Run all queries in parallel for faster loading
       const [userEventsResult, userParticipationsResult, allEventsResult] = await Promise.all([
         // Get user's created events (simplified query - no inner join needed)
@@ -36,12 +48,14 @@ class InsightsEngineService {
           .eq('user_id', userId)
           .limit(50), // Limit to prevent slow queries
         
-        // Get all available events for recommendations
+        // Get only FUTURE events for recommendations (date >= today AND status is upcoming/ongoing)
         supabase
           .from('events')
-          .select('id, title, description, category, tags, date, location, max_participants')
+          .select('id, title, description, category, tags, date, time, location, max_participants, status')
           .neq('user_id', userId)
-          .gte('date', new Date().toISOString().split('T')[0])
+          .gte('date', todayStr) // Only future events
+          .in('status', ['upcoming', 'ongoing']) // Only active events
+          .order('date', { ascending: true }) // Show soonest events first
           .limit(100) // Limit to prevent slow queries with many events
       ]);
 
@@ -52,6 +66,15 @@ class InsightsEngineService {
       if (userEventsError) throw userEventsError;
       if (participationsError) throw participationsError;
       if (allEventsError) throw allEventsError;
+
+      // Double-check: Filter out any events that are in the past (extra safety)
+      const futureEvents = (allEvents || []).filter(event => {
+        const eventDate = new Date(event.date);
+        eventDate.setHours(23, 59, 59); // End of event day
+        return eventDate >= today && event.status !== 'completed' && event.status !== 'cancelled';
+      });
+
+      console.log(`📅 Recommendations: Found ${futureEvents.length} future events out of ${allEvents?.length || 0} total`);
 
       // Get event details for participations (if needed)
       let enrichedParticipations = [];
@@ -68,23 +91,29 @@ class InsightsEngineService {
         }));
       }
 
-      if (!allEvents || allEvents.length === 0) {
+      if (!futureEvents || futureEvents.length === 0) {
         return {
           recommendations: [],
-          insights: "No events available for recommendations at this time. Check back later for new events!"
+          insights: "No upcoming events available for recommendations at this time. Check back later for new events!"
         };
       }
 
-      // Extract user preferences (rule-based analysis)
-      const userProfile = this.buildUserProfile(userEvents || [], enrichedParticipations || []);
+      // Extract user preferences (rule-based analysis) - include signup preferences
+      const userProfile = this.buildUserProfile(userEvents || [], enrichedParticipations || [], signupCategories, signupTags);
       
-      // Score and rank events
-      const scoredEvents = allEvents.map(event => {
-        const score = this.scoreEvent(event, userProfile);
+      // Score and rank events (only future events)
+      // Add daily variation to make recommendations change each day
+      const dailySeed = this.getDailySeed();
+      
+      const scoredEvents = futureEvents.map((event, index) => {
+        const baseScore = this.scoreEvent(event, userProfile);
+        // Add daily variation: each event gets a different boost based on day
+        const dailyVariation = ((dailySeed + index) % 15) - 7; // -7 to +7 variation
+        const score = Math.max(0, Math.min(100, baseScore + dailyVariation));
         return { ...event, score };
       });
 
-      // Get top recommendations
+      // Get top recommendations (shuffled slightly by daily seed)
       const topRecommendations = scoredEvents
         .sort((a, b) => b.score - a.score)
         .slice(0, 5)
@@ -106,36 +135,60 @@ class InsightsEngineService {
     }
   }
 
-  buildUserProfile(userEvents, userParticipations) {
-    const categories = this.extractCategories(userEvents);
-    const tags = this.extractTags(userEvents);
+  buildUserProfile(userEvents, userParticipations, signupCategories = [], signupTags = []) {
+    const eventCategories = this.extractCategories(userEvents);
+    const eventTags = this.extractTags(userEvents);
     
-    // Calculate category preferences
+    // Combine signup preferences with event history
+    // Signup preferences take priority for new users
+    const allCategories = [...new Set([...signupCategories, ...eventCategories])];
+    const allTags = [...new Set([...signupTags, ...eventTags])];
+    
+    // Calculate category preferences (signup categories get boosted weight)
     const categoryFrequency = {};
+    
+    // Give signup categories initial weight of 3
+    signupCategories.forEach(cat => {
+      categoryFrequency[cat] = (categoryFrequency[cat] || 0) + 3;
+    });
+    
+    // Add event history categories
     userEvents?.forEach(e => {
-      categoryFrequency[e.category] = (categoryFrequency[e.category] || 0) + 1;
+      if (e.category) {
+        categoryFrequency[e.category] = (categoryFrequency[e.category] || 0) + 1;
+      }
     });
     
     const topCategory = Object.entries(categoryFrequency)
       .sort(([,a], [,b]) => b - a)[0]?.[0] || 'General';
 
-    // Calculate tag preferences
+    // Calculate tag preferences (signup tags get boosted weight)
     const tagFrequency = {};
-    tags?.forEach(tag => {
+    
+    // Give signup tags initial weight of 3
+    signupTags.forEach(tag => {
+      tagFrequency[tag] = (tagFrequency[tag] || 0) + 3;
+    });
+    
+    // Add event history tags
+    eventTags?.forEach(tag => {
       tagFrequency[tag] = (tagFrequency[tag] || 0) + 1;
     });
     
     const topTags = Object.entries(tagFrequency)
       .sort(([,a], [,b]) => b - a)
-      .slice(0, 5)
+      .slice(0, 10)
       .map(([tag]) => tag);
 
     return {
       eventsCreated: userEvents?.length || 0,
       eventsAttended: userParticipations?.filter(p => p.status === 'attended').length || 0,
-      favoriteCategories: categories,
+      favoriteCategories: allCategories,
       favoriteTags: topTags,
       topCategory,
+      // Store signup preferences separately for match factor display
+      signupCategories,
+      signupTags,
       participationHistory: userParticipations?.map(p => ({
         category: p.events?.category,
         tags: p.events?.tags,
@@ -227,85 +280,201 @@ class InsightsEngineService {
 
   generateRecommendationReason(event, userProfile) {
     const reasons = [];
+    const daysUntil = this.daysUntilEvent(event.date);
     
-    // For new users
-    if (userProfile.eventsCreated === 0 && userProfile.eventsAttended === 0) {
-      const recentDays = this.daysUntilEvent(event.date);
-      if (recentDays <= 14) {
-        reasons.push(`Happening soon`);
-      }
-      if (event.max_participants >= 50 && event.max_participants <= 300) {
-        reasons.push(`Great networking opportunity`);
-      }
-      reasons.push(`Popular ${event.category.toLowerCase()} event`);
-      return reasons.join(' - ') + '.';
+    // Only generate reasons for future events
+    if (daysUntil < 0) {
+      return 'Check out this event.';
     }
     
-    // For users with history
-    if (event.category === userProfile.topCategory) {
+    // Check for signup category match first (most relevant for new users)
+    if (userProfile.signupCategories && userProfile.signupCategories.includes(event.category)) {
+      reasons.push(`Matches your interest in ${event.category}`);
+    }
+    
+    // Check for signup tag matches
+    const matchingSignupTags = event.tags?.filter(tag => 
+      userProfile.signupTags?.includes(tag)
+    ) || [];
+    if (matchingSignupTags.length > 0) {
+      reasons.push(`Related to ${matchingSignupTags.slice(0, 2).join(' & ')}`);
+    }
+    
+    // Check event content for signup interest matches
+    if (userProfile.signupTags && userProfile.signupTags.length > 0 && reasons.length === 0) {
+      const eventText = `${event.title} ${event.description || ''} ${event.category || ''}`.toLowerCase();
+      const matchedInterests = userProfile.signupTags.filter(tag => 
+        eventText.includes(tag.toLowerCase())
+      );
+      if (matchedInterests.length > 0) {
+        reasons.push(`Matches your interest in ${matchedInterests[0]}`);
+      }
+    }
+    
+    // For users with event history
+    if (reasons.length === 0 && event.category === userProfile.topCategory) {
       reasons.push(`Similar to your favorite ${event.category.toLowerCase()} events`);
     }
     
-    const matchingTags = event.tags?.filter(tag => 
-      userProfile.favoriteTags.includes(tag)
-    );
-    if (matchingTags && matchingTags.length > 0) {
-      reasons.push(`Matches your interests: ${matchingTags.join(', ')}`);
-    }
-    
-    const recentDays = this.daysUntilEvent(event.date);
-    if (recentDays <= 7) {
-      reasons.push(`Happening soon - perfect timing!`);
-    }
-    
+    // Check history-based tag matches
     if (reasons.length === 0) {
-      reasons.push(`This ${event.category.toLowerCase()} event might interest you`);
+      const matchingTags = event.tags?.filter(tag => 
+        userProfile.favoriteTags.includes(tag)
+      );
+      if (matchingTags && matchingTags.length > 0) {
+        reasons.push(`Matches your interests: ${matchingTags.slice(0, 2).join(', ')}`);
+      }
     }
     
-    return reasons.join('. ') + '.';
+    // If still no specific matches, describe the event itself
+    if (reasons.length === 0) {
+      // Show event category and tags as the reason
+      if (event.category) {
+        reasons.push(`${event.category} event`);
+      }
+      if (event.tags && event.tags.length > 0) {
+        reasons.push(`Features ${event.tags.slice(0, 2).join(' & ')}`);
+      }
+    }
+    
+    // Add timing info for upcoming events
+    if (daysUntil >= 0 && daysUntil <= 7) {
+      reasons.push(`Happening this week`);
+    } else if (daysUntil > 7 && daysUntil <= 14 && reasons.length < 2) {
+      reasons.push(`Coming up soon`);
+    }
+    
+    // Absolute fallback
+    if (reasons.length === 0) {
+      if (event.max_participants >= 50) {
+        reasons.push(`Great networking opportunity`);
+      } else {
+        reasons.push(`Recommended for you`);
+      }
+    }
+    
+    return reasons.join(' - ') + '.';
   }
 
   getMatchFactors(event, userProfile) {
     const factors = [];
     
-    if (event.category === userProfile.topCategory) {
-      factors.push('Category match');
+    // Check if event category matches user's signup categories
+    if (userProfile.signupCategories && userProfile.signupCategories.length > 0) {
+      if (userProfile.signupCategories.includes(event.category)) {
+        factors.push(event.category); // Show the actual category name
+      }
     }
     
+    // Check if event category matches user's top category from history
+    if (event.category === userProfile.topCategory && !factors.includes(event.category)) {
+      factors.push(event.category);
+    }
+    
+    // Find matching tags with user's interests (from signup or history)
     const matchingTags = event.tags?.filter(tag => 
-      userProfile.favoriteTags.includes(tag)
-    ).length || 0;
-    if (matchingTags > 0) {
-      factors.push(`${matchingTags} tag${matchingTags > 1 ? 's' : ''} match`);
+      userProfile.favoriteTags.includes(tag) || 
+      userProfile.signupTags?.includes(tag)
+    ) || [];
+    
+    // Add actual matching tag names (limit to 3 to avoid clutter)
+    matchingTags.slice(0, 3).forEach(tag => {
+      if (!factors.includes(tag)) {
+        factors.push(tag);
+      }
+    });
+    
+    // Check signup tags that might match event description/title
+    if (userProfile.signupTags && userProfile.signupTags.length > 0) {
+      const eventText = `${event.title} ${event.description || ''} ${event.category || ''}`.toLowerCase();
+      userProfile.signupTags.forEach(tag => {
+        if (eventText.includes(tag.toLowerCase()) && !factors.includes(tag)) {
+          factors.push(tag);
+        }
+      });
     }
     
-    const recentDays = this.daysUntilEvent(event.date);
-    if (recentDays <= 30) {
-      factors.push('Upcoming soon');
+    // If no user preference matches found, show event's own attributes
+    // This ensures we always show meaningful info about WHY this event is recommended
+    if (factors.length === 0) {
+      // Add the event's category if it exists
+      if (event.category) {
+        factors.push(event.category);
+      }
+      
+      // Add up to 2 of the event's own tags
+      if (event.tags && event.tags.length > 0) {
+        event.tags.slice(0, 2).forEach(tag => {
+          if (!factors.includes(tag)) {
+            factors.push(tag);
+          }
+        });
+      }
     }
     
-    return factors.length > 0 ? factors : ['General recommendation'];
+    // Limit factors to 4 most relevant
+    const limitedFactors = factors.slice(0, 4);
+    
+    // Only as absolute last resort, show timing info
+    if (limitedFactors.length === 0) {
+      const daysUntil = this.daysUntilEvent(event.date);
+      if (daysUntil >= 0 && daysUntil <= 7) {
+        limitedFactors.push('Happening this week');
+      } else if (daysUntil > 7 && daysUntil <= 14) {
+        limitedFactors.push('Coming up soon');
+      } else {
+        limitedFactors.push('Trending event');
+      }
+    }
+    
+    return limitedFactors;
   }
 
   generateOverallInsights(userProfile) {
-    // For new users with no history
+    // Check if user has signup preferences
+    const hasSignupPrefs = (userProfile.signupCategories?.length > 0) || (userProfile.signupTags?.length > 0);
+    
+    // For new users with signup preferences
+    if (userProfile.eventsCreated === 0 && userProfile.eventsAttended === 0 && hasSignupPrefs) {
+      const interestsList = [];
+      if (userProfile.signupCategories?.length > 0) {
+        interestsList.push(userProfile.signupCategories.slice(0, 2).join(' & '));
+      }
+      if (userProfile.signupTags?.length > 0) {
+        interestsList.push(userProfile.signupTags.slice(0, 2).join(' & '));
+      }
+      return `Based on your interests in ${interestsList.join(', ')}, we've found these events for you!`;
+    }
+    
+    // For new users without preferences
     if (userProfile.eventsCreated === 0 && userProfile.eventsAttended === 0) {
       return "Welcome! We've selected trending and upcoming events that might interest you. As you attend or create events, your recommendations will become more personalized!";
     }
     
-    if (userProfile.eventsCreated === 0) {
+    if (userProfile.eventsCreated === 0 && !hasSignupPrefs) {
       return "Start creating or attending events to get personalized recommendations!";
     }
     
-    if (userProfile.favoriteCategories.length === 0) {
+    if (userProfile.favoriteCategories.length === 0 && !hasSignupPrefs) {
       return "Explore different event categories to discover your preferences!";
     }
     
-    const tagsText = userProfile.favoriteTags.length > 0 
-      ? `topics like ${userProfile.favoriteTags.slice(0, 2).join(' and ')}`
-      : 'your interests';
+    // Build personalized insight message
+    const interests = [];
+    if (userProfile.topCategory && userProfile.topCategory !== 'General') {
+      interests.push(userProfile.topCategory);
+    }
+    if (userProfile.signupTags?.length > 0) {
+      interests.push(...userProfile.signupTags.slice(0, 2));
+    } else if (userProfile.favoriteTags?.length > 0) {
+      interests.push(...userProfile.favoriteTags.slice(0, 2));
+    }
     
-    return `Based on your interest in ${userProfile.topCategory} events and ${tagsText}, we've curated these recommendations for you!`;
+    if (interests.length > 0) {
+      return `Based on your interest in ${interests.join(', ')}, we've curated these recommendations for you!`;
+    }
+    
+    return "Here are some events we think you'll enjoy based on your activity!";
   }
 
   // ===================================
@@ -685,6 +854,23 @@ class InsightsEngineService {
     const event = new Date(eventDate);
     const diff = event - today;
     return Math.ceil(diff / (1000 * 60 * 60 * 24));
+  }
+
+  // Generate a daily seed for recommendation variation
+  // This ensures recommendations change each day but stay consistent within a day
+  getDailySeed() {
+    const today = new Date();
+    // Create a seed based on year, month, and day
+    return today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
+  }
+
+  // Get today's date as a string in YYYY-MM-DD format (LOCAL timezone)
+  getLocalDateString() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 
   parseTime(timeString) {

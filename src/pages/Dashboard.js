@@ -1,16 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Calendar, 
   Users, 
   TrendingUp, 
   Clock, 
-  MapPin, 
   BarChart3,
   Eye,
   Edit,
-  Trash2,
-  LogIn
+  Trash2
 } from 'lucide-react';
 import { auth } from '../lib/supabase';
 import { dashboardService } from '../services/dashboardService';
@@ -21,6 +19,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState('overview');
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -28,28 +27,39 @@ const Dashboard = () => {
 
   // Real data state
   const [stats, setStats] = useState([]);
-  const [upcomingEvents, setUpcomingEvents] = useState([]);
-  const [recentActivities, setRecentActivities] = useState([]);
   const [allEvents, setAllEvents] = useState([]);
   const [insights, setInsights] = useState([]);
   const [scheduleData, setScheduleData] = useState([]);
   const [dataLoading, setDataLoading] = useState(false);
 
+  // Handle scroll to section when hash is present
+  useEffect(() => {
+    if (location.hash === '#my-schedule' && !isLoading) {
+      // Small delay to ensure content is rendered
+      setTimeout(() => {
+        const element = document.getElementById('my-schedule');
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+    }
+  }, [location.hash, isLoading]);
+
   // Load dashboard data
   useEffect(() => {
     const loadDashboardData = async () => {
       try {
-        const { user } = await auth.getCurrentUser();
-        setUser(user);
+        const { user: currentUser } = await auth.getCurrentUser();
+        setUser(currentUser);
         
         // If no user, redirect to login
-        if (!user) {
+        if (!currentUser) {
           navigate('/login');
           return;
         }
 
-        // Load all dashboard data
-        await loadData();
+        // Load all dashboard data - pass user directly since state isn't updated yet
+        await loadData(currentUser);
       } catch (error) {
         console.error('Error getting user:', error);
         navigate('/login');
@@ -67,8 +77,8 @@ const Dashboard = () => {
       if (!session?.user) {
         navigate('/login');
       } else {
-        // Reload data when user changes
-        loadData();
+        // Reload data when user changes - pass user directly
+        loadData(session.user);
       }
     });
 
@@ -104,66 +114,105 @@ const Dashboard = () => {
     };
   };
 
-  const loadData = async () => {
+  const loadData = async (currentUser = null) => {
     try {
       setError(null);
       setDataLoading(true);
 
-      // Get user role for schedule
-      const userRole = user?.user_metadata?.role || 'user';
+      // Use passed user or fall back to state
+      const activeUser = currentUser || user;
+      
+      if (!activeUser) {
+        console.error('No user available for loading data');
+        return;
+      }
 
-      // Load all data in parallel (including schedule)
+      // Get user role for stats and schedule
+      const userRole = activeUser.user_metadata?.role || 'user';
+      
+      console.log('Loading dashboard data for user:', activeUser.id, 'role:', userRole);
+
+      // Load all data in parallel
       const [
         dashboardStats,
-        upcomingEventsData,
-        recentActivitiesData,
         allEventsData,
         insightsData,
         scheduleDataResult
       ] = await Promise.all([
-        dashboardService.getDashboardStats(),
-        dashboardService.getUpcomingEvents(5),
-        dashboardService.getRecentActivities(10),
-        dashboardService.getAllEvents(),
-        dashboardService.getDashboardInsights(),
-        scheduleService.getUserSchedule(user?.id, userRole)
+        dashboardService.getDashboardStats(activeUser.id, userRole),
+        dashboardService.getAllEvents(userRole),
+        dashboardService.getDashboardInsights(activeUser.id, userRole),
+        scheduleService.getUserSchedule(activeUser.id, userRole)
       ]);
+      
+      console.log('Schedule data loaded:', scheduleDataResult);
 
-      // Format stats for display
-      const formattedStats = [
-        { 
-          name: 'Total Events', 
-          value: dashboardStats.totalEvents.toString(), 
-          change: getChangeDisplay(dashboardStats.eventGrowth), 
-          icon: Calendar, 
-          color: 'blue' 
-        },
-        { 
-          name: 'Active Participants', 
-          value: dashboardStats.totalParticipants.toLocaleString(), 
-          change: getChangeDisplay(dashboardStats.participantGrowth), 
-          icon: Users, 
-          color: 'green' 
-        },
-        { 
-          name: 'Engagement Rate', 
-          value: `${dashboardStats.engagementRate}%`, 
-          change: getChangeDisplay(dashboardStats.engagementChange, 'pp'), 
-          icon: TrendingUp, 
-          color: 'purple' 
-        },
-        { 
-          name: 'Upcoming Events', 
-          value: dashboardStats.upcomingEvents.toString(), 
-          change: getChangeDisplay(dashboardStats.upcomingChange), 
-          icon: Clock, 
-          color: 'orange' 
-        },
-      ];
+      // Format stats for display based on user role
+      const isOrganizer = userRole === 'Organizer' || userRole === 'organizer';
+      const isAdmin = userRole === 'Administrator' || userRole === 'Admin';
+      
+      let formattedStats;
+      
+      if (isOrganizer || isAdmin) {
+        // Stats for organizers/admins - events they created
+        formattedStats = [
+          { 
+            name: 'My Events', 
+            value: dashboardStats.totalEvents.toString(), 
+            change: getChangeDisplay(dashboardStats.eventGrowth), 
+            icon: Calendar, 
+            color: 'blue' 
+          },
+          { 
+            name: 'Total Registrations', 
+            value: dashboardStats.totalParticipants.toLocaleString(), 
+            change: getChangeDisplay(dashboardStats.participantGrowth), 
+            icon: Users, 
+            color: 'green' 
+          },
+          { 
+            name: 'Attendance Rate', 
+            value: `${dashboardStats.engagementRate}%`, 
+            change: getChangeDisplay(dashboardStats.engagementChange, 'pp'), 
+            icon: TrendingUp, 
+            color: 'purple' 
+          },
+          { 
+            name: 'Upcoming Events', 
+            value: dashboardStats.upcomingEvents.toString(), 
+            change: getChangeDisplay(dashboardStats.upcomingChange), 
+            icon: Clock, 
+            color: 'orange' 
+          },
+        ];
+      } else {
+        // Stats for regular users - events they're registered for
+        formattedStats = [
+          { 
+            name: 'Registered Events', 
+            value: dashboardStats.registeredEvents.toString(), 
+            change: getChangeDisplay(null), 
+            icon: Calendar, 
+            color: 'blue' 
+          },
+          { 
+            name: 'Events Attended', 
+            value: dashboardStats.attendedEvents.toString(), 
+            change: getChangeDisplay(null), 
+            icon: Users, 
+            color: 'green' 
+          },
+          { 
+            name: 'Upcoming Events', 
+            value: dashboardStats.upcomingRegistrations.toString(), 
+            change: getChangeDisplay(null), 
+            icon: Clock, 
+            color: 'orange' 
+          },
+        ];
+      }
 
       setStats(formattedStats);
-      setUpcomingEvents(upcomingEventsData);
-      setRecentActivities(recentActivitiesData);
       setAllEvents(allEventsData);
       setInsights(insightsData);
       setScheduleData(scheduleDataResult);
@@ -253,165 +302,123 @@ const Dashboard = () => {
               </div>
 
               {/* User Schedule */}
-              <div className="mb-6">
+              <div id="my-schedule">
                 <UserSchedule scheduleData={scheduleData} user={user} />
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-              {/* Upcoming Events */}
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Upcoming Events</h3>
-                {upcomingEvents.length > 0 ? (
-                  <div className="space-y-3">
-                    {upcomingEvents.map((event) => (
-                      <div key={event.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                        <div className="flex-1">
-                          <h4 className="font-medium text-gray-900">{event.title}</h4>
-                          <div className="flex items-center text-sm text-gray-500 mt-1">
-                            <Calendar size={16} className="mr-1" />
-                            {dashboardService.formatDate(event.date)} at {event.time}
-                          </div>
-                          <div className="flex items-center text-sm text-gray-500 mt-1">
-                            <MapPin size={16} className="mr-1" />
-                            {event.location}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-sm font-medium text-gray-900">{event.participants}</div>
-                          <div className="text-xs text-gray-500">participants</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <Calendar className="mx-auto mb-3 text-gray-400" size={32} />
-                    <p>No upcoming events</p>
-                    <p className="text-sm">Create an event to get started!</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Recent Activities */}
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activities</h3>
-                {recentActivities.length > 0 ? (
-                  <div className="space-y-3">
-                    {recentActivities.map((activity) => (
-                      <div key={activity.id} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
-                        <div className="w-2 h-2 bg-primary-500 rounded-full mt-2"></div>
-                        <div className="flex-1">
-                          <p className="text-sm text-gray-900">{activity.action}</p>
-                          <p className="text-xs text-gray-500">{activity.event} • {activity.time}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <Clock className="mx-auto mb-3 text-gray-400" size={32} />
-                    <p>No recent activities</p>
-                    <p className="text-sm">Activities will appear here as you use the platform</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Spacer for third column at xl */}
-              <div className="hidden xl:block" />
               </div>
             </>
           )}
 
-          {activeTab === 'events' && (
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold text-gray-900">All Events</h3>
-                <div className="flex space-x-2">
-                  <button className="btn-secondary">Filter</button>
-                  <button className="btn-primary">Export</button>
+          {activeTab === 'events' && (() => {
+            const userRole = user?.user_metadata?.role || 'user';
+            const isOrganizerOrAdmin = userRole === 'Organizer' || userRole === 'organizer' || userRole === 'Administrator' || userRole === 'Admin';
+            
+            return (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    {isOrganizerOrAdmin ? 'My Created Events' : 'My Registered Events'}
+                  </h3>
+                  <div className="flex space-x-2">
+                    <button className="btn-secondary">Filter</button>
+                    <button className="btn-primary">Export</button>
+                  </div>
                 </div>
-              </div>
-              
-              {error && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                  <p className="text-red-800">{error}</p>
-                  <button 
-                    onClick={loadData}
-                    className="mt-2 text-red-600 hover:text-red-800 underline"
-                  >
-                    Try again
-                  </button>
-                </div>
-              )}
+                
+                {error && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <p className="text-red-800">{error}</p>
+                    <button 
+                      onClick={loadData}
+                      className="mt-2 text-red-600 hover:text-red-800 underline"
+                    >
+                      Try again
+                    </button>
+                  </div>
+                )}
 
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Participants</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {allEvents.length > 0 ? (
-                      allEvents.map((event) => (
-                        <tr key={event.id}>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">{event.title}</div>
-                            <div className="text-sm text-gray-500">{event.location}</div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {dashboardService.formatDate(event.date)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {event.participants}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                              event.status === 'upcoming' ? 'bg-blue-100 text-blue-800' :
-                              event.status === 'ongoing' ? 'bg-green-100 text-green-800' :
-                              event.status === 'completed' ? 'bg-gray-100 text-gray-800' :
-                              'bg-red-100 text-red-800'
-                            }`}>
-                              {event.status}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <div className="flex space-x-2">
-                              <button 
-                                onClick={() => navigate(`/events/${event.id}`)}
-                                className="text-primary-600 hover:text-primary-900"
-                              >
-                                <Eye size={16} />
-                              </button>
-                              <button 
-                                onClick={() => navigate(`/events/${event.id}/edit`)}
-                                className="text-gray-600 hover:text-gray-900"
-                              >
-                                <Edit size={16} />
-                              </button>
-                              <button className="text-red-600 hover:text-red-900">
-                                <Trash2 size={16} />
-                              </button>
-                            </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          {isOrganizerOrAdmin ? 'Participants' : 'Attendees'}
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {allEvents.length > 0 ? (
+                        allEvents.map((event) => (
+                          <tr key={event.id}>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm font-medium text-gray-900">{event.title}</div>
+                              <div className="text-sm text-gray-500">{event.location}</div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {dashboardService.formatDate(event.date)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {event.participants}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                event.status === 'upcoming' ? 'bg-blue-100 text-blue-800' :
+                                event.status === 'ongoing' ? 'bg-green-100 text-green-800' :
+                                event.status === 'completed' ? 'bg-gray-100 text-gray-800' :
+                                'bg-red-100 text-red-800'
+                              }`}>
+                                {event.status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                              <div className="flex space-x-2">
+                                <button 
+                                  onClick={() => navigate(`/events/${event.id}`)}
+                                  className="text-primary-600 hover:text-primary-900"
+                                  title="View Event"
+                                >
+                                  <Eye size={16} />
+                                </button>
+                                {isOrganizerOrAdmin && (
+                                  <>
+                                    <button 
+                                      onClick={() => navigate(`/events/${event.id}/edit`)}
+                                      className="text-gray-600 hover:text-gray-900"
+                                      title="Edit Event"
+                                    >
+                                      <Edit size={16} />
+                                    </button>
+                                    <button 
+                                      className="text-red-600 hover:text-red-900"
+                                      title="Delete Event"
+                                    >
+                                      <Trash2 size={16} />
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="5" className="px-6 py-12 text-center text-gray-500">
+                            {isOrganizerOrAdmin 
+                              ? 'No events found. Create your first event to get started!'
+                              : 'No registered events. Browse events to find one to register for!'
+                            }
                           </td>
                         </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan="5" className="px-6 py-12 text-center text-gray-500">
-                          No events found.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {activeTab === 'insights' && (
             <div>

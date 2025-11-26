@@ -592,6 +592,290 @@ class NotificationService {
     }
   }
 
+  /**
+   * Create a notification for event registration
+   */
+  async createRegistrationNotification(userId, event) {
+    try {
+      const notification = {
+        user_id: userId,
+        type: 'registration',
+        title: 'Registration Confirmed',
+        message: `You've successfully registered for "${event.title}"`,
+        priority: 'medium',
+        action_url: `/events/${event.id}`,
+        metadata: {
+          event_id: event.id,
+          event_title: event.title,
+          event_date: event.date
+        }
+      };
+
+      const { data, error } = await supabase
+        .from('notifications')
+        .insert([notification])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { data, error: null };
+    } catch (error) {
+      console.error('Error creating registration notification:', error);
+      return { data: null, error };
+    }
+  }
+
+  /**
+   * Create a notification for event reminder
+   */
+  async createEventReminderNotification(userId, event, daysUntil) {
+    try {
+      const notification = {
+        user_id: userId,
+        type: 'reminder',
+        title: 'Event Reminder',
+        message: daysUntil === 0 
+          ? `"${event.title}" is happening today!`
+          : `"${event.title}" is in ${daysUntil} day${daysUntil > 1 ? 's' : ''}`,
+        priority: daysUntil <= 1 ? 'high' : 'medium',
+        action_url: `/events/${event.id}`,
+        metadata: {
+          event_id: event.id,
+          event_title: event.title,
+          event_date: event.date,
+          days_until: daysUntil
+        }
+      };
+
+      const { data, error } = await supabase
+        .from('notifications')
+        .insert([notification])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { data, error: null };
+    } catch (error) {
+      console.error('Error creating event reminder notification:', error);
+      return { data: null, error };
+    }
+  }
+
+  /**
+   * Create a notification for event updates
+   */
+  async createEventUpdateNotification(userId, event, changes) {
+    try {
+      const changeText = changes.length > 1 
+        ? `${changes.length} updates made`
+        : changes[0];
+
+      const notification = {
+        user_id: userId,
+        type: 'event_update',
+        title: 'Event Updated',
+        message: `"${event.title}" has been updated: ${changeText}`,
+        priority: 'high',
+        action_url: `/events/${event.id}`,
+        metadata: {
+          event_id: event.id,
+          event_title: event.title,
+          changes: changes
+        }
+      };
+
+      const { data, error } = await supabase
+        .from('notifications')
+        .insert([notification])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { data, error: null };
+    } catch (error) {
+      console.error('Error creating event update notification:', error);
+      return { data: null, error };
+    }
+  }
+
+  /**
+   * Generate activity-based notifications for a user (call this to populate notifications)
+   */
+  async generateActivityNotifications(userId) {
+    try {
+      const notifications = [];
+      const now = new Date();
+
+      // Get user's registrations
+      const { data: registrations } = await supabase
+        .from('participants')
+        .select(`
+          *,
+          events(id, title, date, time, location, status)
+        `)
+        .eq('user_id', userId)
+        .order('registration_date', { ascending: false })
+        .limit(10);
+
+      if (registrations && registrations.length > 0) {
+        // Create reminders for upcoming events
+        for (const reg of registrations) {
+          const event = reg.events;
+          if (!event || event.status === 'cancelled' || event.status === 'completed') continue;
+
+          const eventDate = new Date(event.date);
+          const daysUntil = Math.ceil((eventDate - now) / (1000 * 60 * 60 * 24));
+
+          // Only remind for events in the next 7 days
+          if (daysUntil >= 0 && daysUntil <= 7) {
+            notifications.push({
+              user_id: userId,
+              type: 'reminder',
+              title: daysUntil === 0 ? '🎉 Event Today!' : `⏰ Event in ${daysUntil} day${daysUntil > 1 ? 's' : ''}`,
+              message: daysUntil === 0 
+                ? `"${event.title}" is happening today! Don't forget to attend.`
+                : `"${event.title}" is coming up on ${new Date(event.date).toLocaleDateString()}.`,
+              priority: daysUntil <= 1 ? 'high' : 'medium',
+              action_url: `/events/${event.id}`,
+              metadata: {
+                event_id: event.id,
+                event_title: event.title,
+                event_date: event.date,
+                days_until: daysUntil
+              }
+            });
+          }
+        }
+      }
+
+      // Get recent events user might be interested in
+      const { data: recentEvents } = await supabase
+        .from('events')
+        .select('*')
+        .neq('status', 'cancelled')
+        .neq('status', 'completed')
+        .gte('date', now.toISOString().split('T')[0])
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+      if (recentEvents && recentEvents.length > 0) {
+        notifications.push({
+          user_id: userId,
+          type: 'timely_suggestion',
+          title: '✨ New Events Available',
+          message: `Check out ${recentEvents.length} new event${recentEvents.length > 1 ? 's' : ''} that might interest you!`,
+          priority: 'medium',
+          action_url: '/events',
+          metadata: {
+            event_count: recentEvents.length
+          }
+        });
+      }
+
+      // Add a welcome/tip notification
+      notifications.push({
+        user_id: userId,
+        type: 'system_alert',
+        title: '💡 Quick Tip',
+        message: 'You can register for events directly from the Events page. We\'ll send you reminders as the event approaches!',
+        priority: 'low',
+        action_url: '/events',
+        metadata: {
+          alert_type: 'tip'
+        }
+      });
+
+      // Insert all notifications
+      if (notifications.length > 0) {
+        const { data, error } = await supabase
+          .from('notifications')
+          .insert(notifications)
+          .select();
+
+        if (error) throw error;
+        return { data: data || [], error: null };
+      }
+
+      return { data: [], error: null };
+    } catch (error) {
+      console.error('Error generating activity notifications:', error);
+      return { data: null, error };
+    }
+  }
+
+  /**
+   * Create a welcome notification for new users
+   */
+  async createWelcomeNotification(userId, userName) {
+    try {
+      const notification = {
+        user_id: userId,
+        type: 'system_alert',
+        title: 'Welcome to EventEase!',
+        message: `Hey ${userName || 'there'}! Welcome to EventEase. Explore events, register, and stay connected.`,
+        priority: 'medium',
+        action_url: '/events',
+        metadata: {
+          alert_type: 'welcome'
+        }
+      };
+
+      const { data, error } = await supabase
+        .from('notifications')
+        .insert([notification])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { data, error: null };
+    } catch (error) {
+      console.error('Error creating welcome notification:', error);
+      return { data: null, error };
+    }
+  }
+
+  /**
+   * Create notifications for all registered participants when event is updated
+   */
+  async notifyEventParticipants(eventId, event, changes) {
+    try {
+      // Get all participants of this event
+      const { data: participants, error: fetchError } = await supabase
+        .from('participants')
+        .select('user_id')
+        .eq('event_id', eventId);
+
+      if (fetchError) throw fetchError;
+      if (!participants || participants.length === 0) return { data: [], error: null };
+
+      // Create notifications for each participant
+      const notifications = participants.map(p => ({
+        user_id: p.user_id,
+        type: 'event_update',
+        title: 'Event Updated',
+        message: `"${event.title}" has been updated. Check the latest details.`,
+        priority: 'high',
+        action_url: `/events/${eventId}`,
+        metadata: {
+          event_id: eventId,
+          event_title: event.title,
+          changes: changes
+        }
+      }));
+
+      const { data, error } = await supabase
+        .from('notifications')
+        .insert(notifications)
+        .select();
+
+      if (error) throw error;
+      return { data, error: null };
+    } catch (error) {
+      console.error('Error notifying event participants:', error);
+      return { data: null, error };
+    }
+  }
+
   async detectPriceDrop(event) {
     try {
       // Check price history for this event

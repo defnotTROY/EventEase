@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar, Users, MapPin, Clock, Eye } from 'lucide-react';
+import { Calendar, Users, MapPin, Clock, Eye, Search, Bookmark, FolderOpen } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const SearchResults = ({ results, onClose, searchQuery }) => {
@@ -26,10 +26,13 @@ const SearchResults = ({ results, onClose, searchQuery }) => {
   };
 
   const events = results?.events || [];
+  const registeredEvents = results?.registeredEvents || [];
+  const myEvents = results?.myEvents || [];
   const participants = results?.participants || [];
   const suggestions = results?.suggestions || {};
   const errorMessage = results?.error;
-  const hasResults = events.length > 0 || participants.length > 0;
+  const isOrganizerOrAdmin = results?.isOrganizerOrAdmin || false;
+  const hasResults = events.length > 0 || participants.length > 0 || registeredEvents.length > 0 || myEvents.length > 0;
 
   const handleQuickLinkClick = (href) => {
     navigate(href);
@@ -119,58 +122,117 @@ const SearchResults = ({ results, onClose, searchQuery }) => {
     );
   }
 
+  // Check if event is in the past
+  const isEventPast = (event) => {
+    if (!event.date) return false;
+    const eventDate = new Date(event.date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    eventDate.setHours(0, 0, 0, 0);
+    return eventDate < today;
+  };
+
+  // Render event card
+  const renderEventCard = (event, showBadge = null) => {
+    const isPast = isEventPast(event);
+    
+    return (
+      <div
+        key={event.id}
+        onClick={() => handleEventClick(event.id)}
+        className={`p-3 rounded-lg hover:bg-gray-50 cursor-pointer border border-gray-100 transition-colors ${isPast ? 'opacity-75' : ''}`}
+      >
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h4 className="text-sm font-medium text-gray-900 line-clamp-1">{event.title}</h4>
+              {showBadge && (
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                  showBadge === 'registered' ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'
+                }`}>
+                  {showBadge === 'registered' ? 'Registered' : 'My Event'}
+                </span>
+              )}
+              {isPast && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-gray-100 text-gray-600">
+                  Past
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-gray-600 mt-1 line-clamp-1">{event.description}</p>
+            <div className="flex items-center mt-2 space-x-3 text-xs text-gray-500">
+              <div className="flex items-center">
+                <Calendar className="h-3 w-3 mr-1" />
+                {formatDate(event.date)}
+              </div>
+              <div className="flex items-center">
+                <MapPin className="h-3 w-3 mr-1" />
+                <span className="line-clamp-1">{event.location || 'Location TBD'}</span>
+              </div>
+            </div>
+          </div>
+          <Eye className="h-4 w-4 text-gray-400 ml-2 flex-shrink-0" />
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="max-h-96 overflow-y-auto">
-      {/* Events Results */}
-      {events.length > 0 && (
+      {/* My Registered Events (for regular users) */}
+      {registeredEvents.length > 0 && (
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center mb-3">
-            <Calendar className="h-4 w-4 text-blue-600 mr-2" />
-            <h3 className="text-sm font-semibold text-gray-900">Events ({events.length})</h3>
+            <Bookmark className="h-4 w-4 text-green-600 mr-2" />
+            <h3 className="text-sm font-semibold text-gray-900">My Registrations ({registeredEvents.length})</h3>
           </div>
           <div className="space-y-2">
-            {events.map((event) => (
-              <div
-                key={event.id}
-                onClick={() => handleEventClick(event.id)}
-                className="p-3 rounded-lg hover:bg-gray-50 cursor-pointer border border-gray-100"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h4 className="text-sm font-medium text-gray-900 line-clamp-1">{event.title}</h4>
-                    <p className="text-xs text-gray-600 mt-1 line-clamp-2">{event.description}</p>
-                    <div className="flex items-center mt-2 space-x-3 text-xs text-gray-500">
-                      <div className="flex items-center">
-                        <Calendar className="h-3 w-3 mr-1" />
-                        {formatDate(event.date)}
-                      </div>
-                      <div className="flex items-center">
-                        <MapPin className="h-3 w-3 mr-1" />
-                        {event.location || 'Location TBD'}
-                      </div>
-                    </div>
-                  </div>
-                  <Eye className="h-4 w-4 text-gray-400 ml-2" />
-                </div>
-              </div>
-            ))}
+            {registeredEvents.slice(0, 3).map((event) => renderEventCard(event, 'registered'))}
           </div>
         </div>
       )}
 
-      {/* Participants Results */}
-      {participants.length > 0 && (
-        <div className="p-4">
+      {/* My Created Events (for organizers/admins) */}
+      {myEvents.length > 0 && (
+        <div className="p-4 border-b border-gray-200">
           <div className="flex items-center mb-3">
-            <Users className="h-4 w-4 text-green-600 mr-2" />
+            <FolderOpen className="h-4 w-4 text-purple-600 mr-2" />
+            <h3 className="text-sm font-semibold text-gray-900">My Events ({myEvents.length})</h3>
+          </div>
+          <div className="space-y-2">
+            {myEvents.slice(0, 3).map((event) => renderEventCard(event, 'created'))}
+          </div>
+        </div>
+      )}
+
+      {/* Discover Events */}
+      {events.length > 0 && (
+        <div className="p-4 border-b border-gray-200">
+          <div className="flex items-center mb-3">
+            <Search className="h-4 w-4 text-blue-600 mr-2" />
+            <h3 className="text-sm font-semibold text-gray-900">
+              {isOrganizerOrAdmin ? 'All Events' : 'Discover Events'} ({events.length})
+            </h3>
+          </div>
+          <div className="space-y-2">
+            {events.slice(0, 5).map((event) => renderEventCard(event))}
+          </div>
+        </div>
+      )}
+
+      {/* Participants Results (for organizers/admins only) */}
+      {participants.length > 0 && (
+        <div className="p-4 border-b border-gray-200">
+          <div className="flex items-center mb-3">
+            <Users className="h-4 w-4 text-orange-600 mr-2" />
             <h3 className="text-sm font-semibold text-gray-900">Participants ({participants.length})</h3>
           </div>
           <div className="space-y-2">
-            {participants.map((participant) => (
+            {participants.slice(0, 3).map((participant) => (
               <div
                 key={participant.id}
                 onClick={() => handleParticipantClick(participant.event_id)}
-                className="p-3 rounded-lg hover:bg-gray-50 cursor-pointer border border-gray-100"
+                className="p-3 rounded-lg hover:bg-gray-50 cursor-pointer border border-gray-100 transition-colors"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -194,7 +256,7 @@ const SearchResults = ({ results, onClose, searchQuery }) => {
       )}
 
       {/* View All Results */}
-      {(events.length > 0 || participants.length > 0) && (
+      {hasResults && (
         <div className="p-4 border-t border-gray-200 bg-gray-50">
           <button
             onClick={() => {
@@ -203,7 +265,7 @@ const SearchResults = ({ results, onClose, searchQuery }) => {
             }}
             className="w-full text-center text-sm text-blue-600 hover:text-blue-800 font-medium"
           >
-            View all {results?.total ?? events.length + participants.length} results
+            View all {results?.total || 0} results
           </button>
         </div>
       )}

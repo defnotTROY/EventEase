@@ -38,14 +38,15 @@ class ConflictDetectionService {
       }
 
       // Get all events the user is registered for
-      const { data: userRegistrations, error: registrationsError } = await supabase
+      // Note: We fetch all and filter in JS to handle NULL status from older registrations
+      const { data: allRegistrations, error: registrationsError } = await supabase
         .from('participants')
         .select(`
           event_id,
+          status,
           events!inner(id, title, date, time, status)
         `)
         .eq('user_id', userId)
-        .eq('status', 'registered') // Only check active registrations
         .neq('event_id', eventId); // Exclude the current event
 
       if (registrationsError) {
@@ -57,7 +58,12 @@ class ConflictDetectionService {
         };
       }
 
-      if (!userRegistrations || userRegistrations.length === 0) {
+      // Filter to only include active registrations (status is 'registered' or NULL)
+      const userRegistrations = (allRegistrations || []).filter(r => 
+        !r.status || r.status === 'registered'
+      );
+
+      if (userRegistrations.length === 0) {
         return {
           hasConflict: false,
           conflictingEvent: null,

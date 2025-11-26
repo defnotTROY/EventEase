@@ -4,20 +4,20 @@ import {
   User, 
   Bell, 
   Shield, 
-  Globe, 
-  Database, 
-  Sparkles, 
   Save, 
   Eye,
   EyeOff,
   Check,
   X,
-  Loader2
+  Loader2,
+  Download,
+  FileDown
 } from 'lucide-react';
 import { auth } from '../lib/supabase';
 import { notificationService } from '../services/notificationService';
 import { pushNotificationService } from '../services/pushNotificationService';
 import { verificationService } from '../services/verificationService';
+import { userDataExportService } from '../services/userDataExportService';
 import { useToast } from '../contexts/ToastContext';
 import UserQRCode from '../components/UserQRCode';
 import { Upload, FileText, CheckCircle, XCircle, Clock, AlertCircle, ShieldCheck } from 'lucide-react';
@@ -49,20 +49,32 @@ const Settings = () => {
     confirmPassword: ''
   });
   const [passwordError, setPasswordError] = useState('');
+  const [downloadingData, setDownloadingData] = useState(false);
 
   const [profileData, setProfileData] = useState({
-    firstName: 'Admin',
-    lastName: 'User',
-    email: 'admin@eventease.com',
-    phone: '+1 (555) 123-4567',
-    organization: 'EventEase Inc.',
-    role: 'Event Organizer',
-    timezone: 'UTC-5',
-    language: 'English'
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    organization: '',
+    role: 'Regular User',
+    language: 'English',
+    // New profile fields
+    dateOfBirth: '',
+    age: '',
+    gender: '',
+    bio: '',
+    address: '',
+    city: '',
+    country: '',
+    website: '',
+    linkedin: '',
+    twitter: '',
+    instagram: '',
+    interests: ''
   });
 
   const [notificationSettings, setNotificationSettings] = useState({
-    emailNotifications: true,
     pushNotifications: true,
     eventReminders: true,
     participantUpdates: true,
@@ -71,65 +83,35 @@ const Settings = () => {
   });
 
   const [smartNotificationPreferences, setSmartNotificationPreferences] = useState({
-    frequency: 'real-time',
-    categories: {
-      music: true,
-      sports: true,
-      food: true,
-      tech: true,
-      arts: true,
-      business: true,
-      education: true,
-      other: true
-    },
+    max_daily_notifications: 5,
+    priority_level: 'all',
     quiet_hours: {
-      enabled: true,
+      enabled: false,
       start: '22:00',
       end: '08:00'
-    },
-    priority_level: 'all',
-    location_based: true,
-    max_daily_notifications: 3,
-    timely_suggestions: true,
-    price_alerts: true,
-    last_chance_reminders: true,
-    nearby_alerts: true
+    }
   });
 
-  const [aiSettings, setAiSettings] = useState({
-    aiInsights: true,
-    smartRecommendations: true,
-    automatedScheduling: true,
-    predictiveAnalytics: true,
-    sentimentAnalysis: true,
-    autoTagging: false
-  });
 
-  const [securitySettings, setSecuritySettings] = useState({
-    twoFactorAuth: false,
-    sessionTimeout: 30,
-    passwordExpiry: 90,
-    loginNotifications: true,
-    suspiciousActivityAlerts: true
-  });
 
   const tabs = [
     { id: 'profile', name: 'Profile', icon: User },
     { id: 'verification', name: 'Verification', icon: ShieldCheck },
     { id: 'notifications', name: 'Notifications', icon: Bell },
-    { id: 'ai', name: 'AI Settings', icon: Sparkles },
-    { id: 'security', name: 'Security', icon: Shield },
-    { id: 'integrations', name: 'Integrations', icon: Globe },
-    { id: 'data', name: 'Data & Privacy', icon: Database }
-  ];
-
-  const timezones = [
-    'UTC-12', 'UTC-11', 'UTC-10', 'UTC-9', 'UTC-8', 'UTC-7', 'UTC-6', 'UTC-5',
-    'UTC-4', 'UTC-3', 'UTC-2', 'UTC-1', 'UTC+0', 'UTC+1', 'UTC+2', 'UTC+3',
-    'UTC+4', 'UTC+5', 'UTC+6', 'UTC+7', 'UTC+8', 'UTC+9', 'UTC+10', 'UTC+11', 'UTC+12'
+    { id: 'security', name: 'Security', icon: Shield }
   ];
 
   const languages = ['English', 'Spanish', 'French', 'German', 'Chinese', 'Japanese', 'Korean', 'Arabic'];
+
+  const countries = [
+    'Afghanistan', 'Albania', 'Algeria', 'Argentina', 'Australia', 'Austria', 'Bangladesh', 'Belgium', 
+    'Brazil', 'Canada', 'Chile', 'China', 'Colombia', 'Croatia', 'Czech Republic', 'Denmark', 'Egypt', 
+    'Finland', 'France', 'Germany', 'Greece', 'Hong Kong', 'Hungary', 'India', 'Indonesia', 'Ireland', 
+    'Israel', 'Italy', 'Japan', 'Kenya', 'Malaysia', 'Mexico', 'Netherlands', 'New Zealand', 'Nigeria', 
+    'Norway', 'Pakistan', 'Peru', 'Philippines', 'Poland', 'Portugal', 'Romania', 'Russia', 'Saudi Arabia', 
+    'Singapore', 'South Africa', 'South Korea', 'Spain', 'Sweden', 'Switzerland', 'Taiwan', 'Thailand', 
+    'Turkey', 'Ukraine', 'United Arab Emirates', 'United Kingdom', 'United States', 'Vietnam', 'Other'
+  ];
 
   // Sync activeTab with URL param
   useEffect(() => {
@@ -163,15 +145,37 @@ const Settings = () => {
           email: user.email || '',
           phone: user.user_metadata?.phone || '',
           organization: user.user_metadata?.organization || '',
-          role: user.user_metadata?.role || 'Event Organizer',
-          timezone: user.user_metadata?.timezone || 'UTC-5',
-          language: user.user_metadata?.language || 'English'
+          role: user.user_metadata?.role || 'Regular User',
+          language: user.user_metadata?.language || 'English',
+          // New profile fields
+          dateOfBirth: user.user_metadata?.date_of_birth || '',
+          age: user.user_metadata?.age || '',
+          gender: user.user_metadata?.gender || '',
+          bio: user.user_metadata?.bio || '',
+          address: user.user_metadata?.address || '',
+          city: user.user_metadata?.city || '',
+          country: user.user_metadata?.country || '',
+          website: user.user_metadata?.website || '',
+          linkedin: user.user_metadata?.linkedin || '',
+          twitter: user.user_metadata?.twitter || '',
+          instagram: user.user_metadata?.instagram || '',
+          interests: user.user_metadata?.interests || ''
         }));
 
         // Load notification preferences
         const { data: prefs } = await notificationService.getPreferences(user.id);
         if (prefs) {
-          setSmartNotificationPreferences(prefs);
+          // Merge with defaults to handle missing fields
+          setSmartNotificationPreferences(prev => ({
+            ...prev,
+            max_daily_notifications: prefs.max_daily_notifications ?? prev.max_daily_notifications,
+            priority_level: prefs.priority_level ?? prev.priority_level,
+            quiet_hours: {
+              enabled: prefs.quiet_hours?.enabled ?? prev.quiet_hours.enabled,
+              start: prefs.quiet_hours?.start ?? prev.quiet_hours.start,
+              end: prefs.quiet_hours?.end ?? prev.quiet_hours.end
+            }
+          }));
         }
 
         // Check push notification support and status
@@ -199,10 +203,6 @@ const Settings = () => {
       setProfileData(prev => ({ ...prev, [field]: value }));
     } else if (section === 'notifications') {
       setNotificationSettings(prev => ({ ...prev, [field]: value }));
-    } else if (section === 'ai') {
-      setAiSettings(prev => ({ ...prev, [field]: value }));
-    } else if (section === 'security') {
-      setSecuritySettings(prev => ({ ...prev, [field]: value }));
     }
   };
 
@@ -272,11 +272,21 @@ const Settings = () => {
         last_name: profileData.lastName,
         phone: profileData.phone,
         organization: profileData.organization,
-        timezone: profileData.timezone,
         language: profileData.language,
         notification_settings: notificationSettings,
-        ai_settings: aiSettings,
-        security_settings: securitySettings
+        // New profile fields
+        date_of_birth: profileData.dateOfBirth,
+        age: profileData.age,
+        gender: profileData.gender,
+        bio: profileData.bio,
+        address: profileData.address,
+        city: profileData.city,
+        country: profileData.country,
+        website: profileData.website,
+        linkedin: profileData.linkedin,
+        twitter: profileData.twitter,
+        instagram: profileData.instagram,
+        interests: profileData.interests
       };
 
       // Only allow role changes for admin users
@@ -709,383 +719,206 @@ const Settings = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Language
+              </label>
+              <select
+                value={profileData.language}
+                onChange={(e) => handleInputChange('profile', 'language', e.target.value)}
+                className="input-field"
+              >
+                {languages.map(language => (
+                  <option key={language} value={language}>{language}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Additional Profile Info */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Timezone
+                  Date of Birth
                 </label>
-                <select
-                  value={profileData.timezone}
-                  onChange={(e) => handleInputChange('profile', 'timezone', e.target.value)}
+                <input
+                  type="date"
+                  value={profileData.dateOfBirth || ''}
+                  onChange={(e) => handleInputChange('profile', 'dateOfBirth', e.target.value)}
                   className="input-field"
-                >
-                  {timezones.map(timezone => (
-                    <option key={timezone} value={timezone}>{timezone}</option>
-                  ))}
-                </select>
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Language
+                  Age
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="120"
+                  value={profileData.age || ''}
+                  onChange={(e) => handleInputChange('profile', 'age', e.target.value)}
+                  className="input-field"
+                  placeholder="Your age"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Gender
                 </label>
                 <select
-                  value={profileData.language}
-                  onChange={(e) => handleInputChange('profile', 'language', e.target.value)}
+                  value={profileData.gender || ''}
+                  onChange={(e) => handleInputChange('profile', 'gender', e.target.value)}
                   className="input-field"
                 >
-                  {languages.map(language => (
-                    <option key={language} value={language}>{language}</option>
+                  <option value="">Prefer not to say</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Bio
+              </label>
+              <textarea
+                value={profileData.bio || ''}
+                onChange={(e) => handleInputChange('profile', 'bio', e.target.value)}
+                className="input-field"
+                rows={3}
+                placeholder="Tell us a little about yourself..."
+                maxLength={500}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                {(profileData.bio || '').length}/500 characters
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Address
+              </label>
+              <input
+                type="text"
+                value={profileData.address || ''}
+                onChange={(e) => handleInputChange('profile', 'address', e.target.value)}
+                className="input-field"
+                placeholder="Street address, city, state/province"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  City
+                </label>
+                <input
+                  type="text"
+                  value={profileData.city || ''}
+                  onChange={(e) => handleInputChange('profile', 'city', e.target.value)}
+                  className="input-field"
+                  placeholder="Your city"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Country
+                </label>
+                <select
+                  value={profileData.country || ''}
+                  onChange={(e) => handleInputChange('profile', 'country', e.target.value)}
+                  className="input-field"
+                >
+                  <option value="">Select a country</option>
+                  {countries.map(country => (
+                    <option key={country} value={country}>{country}</option>
                   ))}
                 </select>
+              </div>
+            </div>
+
+            {/* Social Links */}
+            <div className="border-t border-gray-200 pt-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Social Links</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Website
+                  </label>
+                  <input
+                    type="url"
+                    value={profileData.website || ''}
+                    onChange={(e) => handleInputChange('profile', 'website', e.target.value)}
+                    className="input-field"
+                    placeholder="https://yourwebsite.com"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    LinkedIn
+                  </label>
+                  <input
+                    type="url"
+                    value={profileData.linkedin || ''}
+                    onChange={(e) => handleInputChange('profile', 'linkedin', e.target.value)}
+                    className="input-field"
+                    placeholder="https://linkedin.com/in/username"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Twitter / X
+                  </label>
+                  <input
+                    type="text"
+                    value={profileData.twitter || ''}
+                    onChange={(e) => handleInputChange('profile', 'twitter', e.target.value)}
+                    className="input-field"
+                    placeholder="@username"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Instagram
+                  </label>
+                  <input
+                    type="text"
+                    value={profileData.instagram || ''}
+                    onChange={(e) => handleInputChange('profile', 'instagram', e.target.value)}
+                    className="input-field"
+                    placeholder="@username"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Event Preferences */}
+            <div className="border-t border-gray-200 pt-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Event Preferences</h3>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Interests
+                </label>
+                <input
+                  type="text"
+                  value={profileData.interests || ''}
+                  onChange={(e) => handleInputChange('profile', 'interests', e.target.value)}
+                  className="input-field"
+                  placeholder="e.g., Technology, Music, Sports, Business"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Separate multiple interests with commas
+                </p>
               </div>
             </div>
 
             <div className="bg-blue-50 p-4 rounded-lg">
               <h4 className="font-medium text-blue-900 mb-2">Profile Information</h4>
               <p className="text-sm text-blue-800">
-                Your profile information helps us personalize your experience and provide better support.
-                This information is visible to event participants and organizers.
+                Your profile information helps us personalize your experience and provide better event recommendations.
+                This information may be visible to event organizers when you register for events.
               </p>
-            </div>
-
-            {/* Verification Status Badge */}
-            {verification && (
-              <div className={`p-4 rounded-lg border ${
-                verification.status === 'approved' 
-                  ? 'bg-green-50 border-green-200' 
-                  : verification.status === 'rejected'
-                  ? 'bg-red-50 border-red-200'
-                  : 'bg-yellow-50 border-yellow-200'
-              }`}>
-                <div className="flex items-center space-x-3">
-                  {verification.status === 'approved' ? (
-                    <CheckCircle className="text-green-600" size={24} />
-                  ) : verification.status === 'rejected' ? (
-                    <XCircle className="text-red-600" size={24} />
-                  ) : (
-                    <Clock className="text-yellow-600" size={24} />
-                  )}
-                  <div className="flex-1">
-                    <h4 className={`font-semibold ${
-                      verification.status === 'approved' 
-                        ? 'text-green-900' 
-                        : verification.status === 'rejected'
-                        ? 'text-red-900'
-                        : 'text-yellow-900'
-                    }`}>
-                      Verification Status: {verification.status === 'approved' ? 'Verified' : verification.status === 'rejected' ? 'Rejected' : verification.status === 'pending' ? 'Pending Review' : 'Under Review'}
-                    </h4>
-                    <p className={`text-sm mt-1 ${
-                      verification.status === 'approved' 
-                        ? 'text-green-800' 
-                        : verification.status === 'rejected'
-                        ? 'text-red-800'
-                        : 'text-yellow-800'
-                    }`}>
-                      {verification.status === 'approved' 
-                        ? 'Your profile is verified. You can register for events that require verification.'
-                        : verification.status === 'rejected'
-                        ? 'Your verification was rejected. Please resubmit with correct documents.'
-                        : 'Your verification is being reviewed by an administrator.'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Profile Verification Section */}
-            <div className="mt-8 border-t border-gray-200 pt-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Profile Verification</h3>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Upload verification documents for ethical event registration
-                  </p>
-                </div>
-                {verification && verification.status === 'approved' && (
-                  <div className="flex items-center space-x-2 text-green-600">
-                    <CheckCircle size={20} />
-                    <span className="font-medium">Verified</span>
-                  </div>
-                )}
-                {verification && verification.status === 'rejected' && (
-                  <div className="flex items-center space-x-2 text-red-600">
-                    <XCircle size={20} />
-                    <span className="font-medium">Rejected</span>
-                  </div>
-                )}
-                {verification && verification.status === 'pending' && (
-                  <div className="flex items-center space-x-2 text-yellow-600">
-                    <Clock size={20} />
-                    <span className="font-medium">Pending Review</span>
-                  </div>
-                )}
-                {verification && verification.status === 'under_review' && (
-                  <div className="flex items-center space-x-2 text-blue-600">
-                    <AlertCircle size={20} />
-                    <span className="font-medium">Under Review</span>
-                  </div>
-                )}
-              </div>
-
-              {verification && verification.status === 'approved' ? (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <div className="flex items-start space-x-3">
-                    <CheckCircle className="text-green-600 mt-0.5" size={20} />
-                    <div className="flex-1">
-                      <h4 className="font-medium text-green-900 mb-1">Verification Approved</h4>
-                      <p className="text-sm text-green-800">
-                        Your profile has been verified. You can now register for events that require verification.
-                      </p>
-                      {verification.reviewed_at && (
-                        <p className="text-xs text-green-700 mt-2">
-                          Approved on {new Date(verification.reviewed_at).toLocaleDateString()}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ) : verification && verification.status === 'rejected' ? (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-                  <div className="flex items-start space-x-3">
-                    <XCircle className="text-red-600 mt-0.5" size={20} />
-                    <div className="flex-1">
-                      <h4 className="font-medium text-red-900 mb-1">Verification Rejected</h4>
-                      {verification.rejection_reason && (
-                        <p className="text-sm text-red-800 mb-2">
-                          <strong>Reason:</strong> {verification.rejection_reason}
-                        </p>
-                      )}
-                      <p className="text-sm text-red-800">
-                        Please review the feedback and resubmit your verification documents.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ) : verification && (verification.status === 'pending' || verification.status === 'under_review') ? (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-                  <div className="flex items-start space-x-3">
-                    <Clock className="text-yellow-600 mt-0.5" size={20} />
-                    <div className="flex-1">
-                      <h4 className="font-medium text-yellow-900 mb-1">
-                        {verification.status === 'pending' ? 'Pending Review' : 'Under Review'}
-                      </h4>
-                      <p className="text-sm text-yellow-800">
-                        Your verification document is being reviewed by an administrator. You will be notified once the review is complete.
-                      </p>
-                      <p className="text-xs text-yellow-700 mt-2">
-                        Submitted on {new Date(verification.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-
-              {(!verification || ['rejected', 'pending'].includes(verification?.status)) && (
-                <div className="space-y-4">
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <h4 className="font-medium text-blue-900 mb-2">Why Verification?</h4>
-                    <p className="text-sm text-blue-800 mb-2">
-                      We require profile verification to ensure ethical event registration and protect event organizers from fraudulent registrations.
-                    </p>
-                    <ul className="text-sm text-blue-800 list-disc list-inside space-y-1">
-                      <li>Prevents duplicate or fake registrations</li>
-                      <li>Ensures accurate participant data</li>
-                      <li>Protects event organizers</li>
-                      <li>Maintains platform integrity</li>
-                    </ul>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Verification Type *
-                      </label>
-                      <select
-                        value={verificationFormData.verificationType}
-                        onChange={(e) => setVerificationFormData(prev => ({ ...prev, verificationType: e.target.value }))}
-                        className="input-field"
-                      >
-                        <option value="identity">Identity Verification</option>
-                        <option value="organization">Organization Certificate</option>
-                        <option value="student">Student ID</option>
-                        <option value="professional">Professional License</option>
-                        <option value="other">Other</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Document Type *
-                      </label>
-                      <select
-                        value={verificationFormData.documentType}
-                        onChange={(e) => setVerificationFormData(prev => ({ ...prev, documentType: e.target.value }))}
-                        className="input-field"
-                      >
-                        <option value="id_card">ID Card</option>
-                        <option value="passport">Passport</option>
-                        <option value="driver_license">Driver's License</option>
-                        <option value="student_id">Student ID</option>
-                        <option value="organization_certificate">Organization Certificate</option>
-                        <option value="professional_license">Professional License</option>
-                        <option value="other">Other</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Verification Document *
-                    </label>
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                      {verificationFilePreview ? (
-                        <div className="space-y-4">
-                          {verificationFilePreview.type?.startsWith('image/') ? (
-                            <img
-                              src={verificationFilePreview.url}
-                              alt="Document preview"
-                              className="mx-auto max-h-48 object-contain rounded-lg"
-                            />
-                          ) : (
-                            <div className="flex items-center justify-center">
-                              <FileText className="h-16 w-16 text-gray-400" />
-                            </div>
-                          )}
-                          <div className="flex items-center justify-center space-x-2">
-                            <span className="text-sm text-gray-700">{verificationFile.name}</span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setVerificationFile(null);
-                                setVerificationFilePreview(null);
-                              }}
-                              className="text-red-600 hover:text-red-800"
-                            >
-                              <X size={18} />
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                          <div className="mt-4">
-                            <input
-                              type="file"
-                              accept=".pdf,.jpg,.jpeg,.png,.gif,.doc,.docx"
-                              onChange={(e) => {
-                                const file = e.target.files[0];
-                                if (file) {
-                                  setVerificationFile(file);
-                                  if (file.type.startsWith('image/')) {
-                                    setVerificationFilePreview({
-                                      url: URL.createObjectURL(file),
-                                      type: file.type
-                                    });
-                                  } else {
-                                    setVerificationFilePreview({
-                                      url: null,
-                                      type: file.type
-                                    });
-                                  }
-                                }
-                              }}
-                              className="hidden"
-                              id="verification-upload"
-                              disabled={verificationLoading}
-                            />
-                            <label
-                              htmlFor="verification-upload"
-                              className={`cursor-pointer px-4 py-2 rounded-lg ${
-                                verificationLoading
-                                  ? 'bg-gray-400 text-white cursor-not-allowed'
-                                  : 'bg-primary-600 text-white hover:bg-primary-700'
-                              }`}
-                            >
-                              {verificationLoading ? (
-                                <div className="flex items-center">
-                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                  Uploading...
-                                </div>
-                              ) : (
-                                'Choose File'
-                              )}
-                            </label>
-                          </div>
-                          <p className="mt-2 text-sm text-gray-500">
-                            PDF, JPG, PNG, GIF, DOC, DOCX up to 10MB
-                          </p>
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      if (!verificationFile) {
-                        warning('Please select a file to upload for verification.');
-                        return;
-                      }
-
-                      setVerificationLoading(true);
-                      try {
-                        const { data, error } = await verificationService.uploadVerification(
-                          user.id,
-                          verificationFile,
-                          verificationFormData
-                        );
-
-                        if (error) throw error;
-
-                        setVerification(data);
-                        setVerificationFile(null);
-                        setVerificationFilePreview(null);
-                        success('Your verification document has been uploaded successfully. It will be reviewed by an administrator, typically within 24 hours.');
-                      } catch (error) {
-                        console.error('Error uploading verification:', error);
-                        showError(error.message || 'Unable to upload verification document at this time. Please ensure the file is valid and try again.');
-                      } finally {
-                        setVerificationLoading(false);
-                      }
-                    }}
-                    disabled={verificationLoading || !verificationFile}
-                    className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {verificationLoading ? (
-                      <div className="flex items-center justify-center">
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Uploading...
-                      </div>
-                    ) : (
-                      verification ? 'Resubmit Verification' : 'Submit Verification'
-                    )}
-                  </button>
-
-                  {verification && verification.status === 'rejected' && (
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        if (!window.confirm('Are you sure you want to delete your current verification? This action cannot be undone. You can upload a new verification document after deletion.')) {
-                          return;
-                        }
-
-                        try {
-                          const { error } = await verificationService.deleteVerification(verification.id, user.id);
-                          if (error) throw error;
-                          setVerification(null);
-                          success('Your verification has been deleted successfully. You can now upload a new verification document.');
-                        } catch (error) {
-                          console.error('Error deleting verification:', error);
-                          showError('Unable to delete verification at this time. Please try again later.');
-                        }
-                      }}
-                      className="btn-secondary w-full"
-                    >
-                      Delete Current Verification
-                    </button>
-                  )}
-                </div>
-              )}
             </div>
 
             {/* QR Code Section */}
@@ -1098,234 +931,102 @@ const Settings = () => {
       case 'notifications':
         return (
           <div className="space-y-6">
-            {/* Basic Email Notifications */}
+            {/* In-App Notifications */}
             <div className="space-y-4">
-              <h3 className="text-lg font-medium text-gray-900">Email Notifications</h3>
-              {Object.entries(notificationSettings).map(([key, value]) => (
-                <div key={key} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                  <div>
-                    <h4 className="font-medium text-gray-900 capitalize">
-                      {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
-                    </h4>
-                    <p className="text-sm text-gray-500">
-                      {key === 'emailNotifications' && 'Receive notifications via email'}
-                      {key === 'pushNotifications' && 'Receive push notifications in the app'}
-                      {key === 'eventReminders' && 'Get reminded about upcoming events'}
-                      {key === 'participantUpdates' && 'Notifications about participant changes'}
-                      {key === 'systemAlerts' && 'Important system and security alerts'}
-                      {key === 'marketingEmails' && 'Receive promotional and marketing content'}
-                    </p>
-                    {key === 'pushNotifications' && !pushNotificationSupported && (
-                      <p className="text-xs text-red-600 mt-1">Push notifications are not supported in this browser</p>
-                    )}
-                    {key === 'pushNotifications' && pushNotificationSupported && !pushNotificationEnabled && value && (
-                      <p className="text-xs text-yellow-600 mt-1">Click to enable push notifications</p>
-                    )}
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={value}
-                      onChange={async (e) => {
-                        const newValue = e.target.checked;
-                        handleInputChange('notifications', key, newValue);
-                        
-                        // Handle push notification subscription
-                        if (key === 'pushNotifications' && newValue && pushNotificationSupported) {
-                          try {
-                            await pushNotificationService.subscribe(user.id);
-                            setPushNotificationEnabled(true);
-                            success('Push notifications have been enabled successfully.');
-                          } catch (error) {
-                            console.error('Error enabling push notifications:', error);
-                            handleInputChange('notifications', key, false);
-                            showError('Unable to enable push notifications. Please check your browser settings and ensure notifications are allowed for this site.');
-                          }
-                        } else if (key === 'pushNotifications' && !newValue && pushNotificationEnabled) {
-                          try {
-                            await pushNotificationService.unsubscribe(user.id);
-                            setPushNotificationEnabled(false);
-                          } catch (error) {
-                            console.error('Error disabling push notifications:', error);
-                          }
-                        }
-                      }}
-                      disabled={key === 'pushNotifications' && !pushNotificationSupported}
-                      className="sr-only peer"
-                    />
-                    <div className={`w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600 ${key === 'pushNotifications' && !pushNotificationSupported ? 'opacity-50 cursor-not-allowed' : ''}`}></div>
-                  </label>
-                </div>
-              ))}
-            </div>
-
-            {/* Smart Notification Preferences */}
-            <div className="space-y-6 border-t border-gray-200 pt-6">
-              <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Smart Notifications</h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Intelligent, contextual notifications based on your behavior and preferences. Max 2-3 per day to avoid spam.
-                </p>
-              </div>
-
-              {/* Frequency Settings */}
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Notification Frequency</label>
-                  <select
-                    value={smartNotificationPreferences.frequency}
-                    onChange={(e) => setSmartNotificationPreferences(prev => ({ ...prev, frequency: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  >
-                    <option value="real-time">Real-time alerts</option>
-                    <option value="daily-digest">Daily digest</option>
-                    <option value="weekly-digest">Weekly digest</option>
-                  </select>
-                </div>
-
-                {/* Max Daily Notifications */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Max Daily Notifications: {smartNotificationPreferences.max_daily_notifications}
-                  </label>
-                  <input
-                    type="range"
-                    min="1"
-                    max="5"
-                    value={smartNotificationPreferences.max_daily_notifications}
-                    onChange={(e) => setSmartNotificationPreferences(prev => ({ ...prev, max_daily_notifications: parseInt(e.target.value) }))}
-                    className="w-full"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Recommended: 2-3 per day</p>
-                </div>
-
-                {/* Priority Level */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Priority Level</label>
-                  <select
-                    value={smartNotificationPreferences.priority_level}
-                    onChange={(e) => setSmartNotificationPreferences(prev => ({ ...prev, priority_level: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  >
-                    <option value="all">All notifications</option>
-                    <option value="high-priority">High priority only</option>
-                    <option value="urgent-only">Urgent only</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Notification Types */}
-              <div className="space-y-4">
-                <h4 className="font-medium text-gray-900">Notification Types</h4>
-                {[
-                  { key: 'timely_suggestions', label: 'Timely Event Suggestions', desc: 'Concert by [artist you like] coming to your area next week' },
-                  { key: 'price_alerts', label: 'Price Alerts', desc: 'Tickets dropped for events you viewed' },
-                  { key: 'last_chance_reminders', label: 'Last-Chance Reminders', desc: 'Only 2 days left to register for relevant events' },
-                  { key: 'nearby_alerts', label: 'Nearby Happening Alerts', desc: 'Real-time notifications when interesting events start near you' }
-                ].map(({ key, label, desc }) => (
-                  <div key={key} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                    <div>
-                      <h4 className="font-medium text-gray-900">{label}</h4>
-                      <p className="text-sm text-gray-500">{desc}</p>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={smartNotificationPreferences[key]}
-                        onChange={(e) => setSmartNotificationPreferences(prev => ({ ...prev, [key]: e.target.checked }))}
-                        className="sr-only peer"
-                      />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
-                    </label>
-                  </div>
-                ))}
-              </div>
-
-              {/* Category Preferences */}
-              <div className="space-y-4">
-                <h4 className="font-medium text-gray-900">Event Categories</h4>
-                <div className="grid grid-cols-2 gap-3">
-                  {Object.entries(smartNotificationPreferences.categories).map(([category, enabled]) => (
-                    <div key={category} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-                      <span className="text-sm font-medium text-gray-900 capitalize">{category}</span>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={enabled}
-                          onChange={(e) => setSmartNotificationPreferences(prev => ({
-                            ...prev,
-                            categories: { ...prev.categories, [category]: e.target.checked }
-                          }))}
-                          className="sr-only peer"
-                        />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
-                      </label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Quiet Hours */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                  <div>
-                    <h4 className="font-medium text-gray-900">Quiet Hours</h4>
-                    <p className="text-sm text-gray-500">No notifications during these hours</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={smartNotificationPreferences.quiet_hours.enabled}
-                      onChange={(e) => setSmartNotificationPreferences(prev => ({
-                        ...prev,
-                        quiet_hours: { ...prev.quiet_hours, enabled: e.target.checked }
-                      }))}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
-                  </label>
-                </div>
-                {smartNotificationPreferences.quiet_hours.enabled && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Start Time</label>
-                      <input
-                        type="time"
-                        value={smartNotificationPreferences.quiet_hours.start}
-                        onChange={(e) => setSmartNotificationPreferences(prev => ({
-                          ...prev,
-                          quiet_hours: { ...prev.quiet_hours, start: e.target.value }
-                        }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">End Time</label>
-                      <input
-                        type="time"
-                        value={smartNotificationPreferences.quiet_hours.end}
-                        onChange={(e) => setSmartNotificationPreferences(prev => ({
-                          ...prev,
-                          quiet_hours: { ...prev.quiet_hours, end: e.target.value }
-                        }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Location Based */}
+              <h3 className="text-lg font-medium text-gray-900">Notification Preferences</h3>
+              <p className="text-sm text-gray-600">Control which notifications you receive in the app.</p>
+              
+              {/* Push Notifications */}
               <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
                 <div>
-                  <h4 className="font-medium text-gray-900">Location-Based Notifications</h4>
-                  <p className="text-sm text-gray-500">Get alerts for events near your location</p>
+                  <h4 className="font-medium text-gray-900">Push Notifications</h4>
+                  <p className="text-sm text-gray-500">Receive push notifications in your browser</p>
+                  {!pushNotificationSupported && (
+                    <p className="text-xs text-red-600 mt-1">Push notifications are not supported in this browser</p>
+                  )}
+                  {pushNotificationSupported && !pushNotificationEnabled && notificationSettings.pushNotifications && (
+                    <p className="text-xs text-yellow-600 mt-1">Click to enable push notifications</p>
+                  )}
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={smartNotificationPreferences.location_based}
-                    onChange={(e) => setSmartNotificationPreferences(prev => ({ ...prev, location_based: e.target.checked }))}
+                    checked={notificationSettings.pushNotifications}
+                    onChange={async (e) => {
+                      const newValue = e.target.checked;
+                      handleInputChange('notifications', 'pushNotifications', newValue);
+                      
+                      if (newValue && pushNotificationSupported) {
+                        try {
+                          await pushNotificationService.subscribe(user.id);
+                          setPushNotificationEnabled(true);
+                          success('Push notifications have been enabled successfully.');
+                        } catch (error) {
+                          console.error('Error enabling push notifications:', error);
+                          handleInputChange('notifications', 'pushNotifications', false);
+                          showError('Unable to enable push notifications. Please check your browser settings.');
+                        }
+                      } else if (!newValue && pushNotificationEnabled) {
+                        try {
+                          await pushNotificationService.unsubscribe(user.id);
+                          setPushNotificationEnabled(false);
+                        } catch (error) {
+                          console.error('Error disabling push notifications:', error);
+                        }
+                      }
+                    }}
+                    disabled={!pushNotificationSupported}
+                    className="sr-only peer"
+                  />
+                  <div className={`w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600 ${!pushNotificationSupported ? 'opacity-50 cursor-not-allowed' : ''}`}></div>
+                </label>
+              </div>
+
+              {/* Event Reminders */}
+              <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                <div>
+                  <h4 className="font-medium text-gray-900">Event Reminders</h4>
+                  <p className="text-sm text-gray-500">Get reminded about upcoming events you've registered for</p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={notificationSettings.eventReminders}
+                    onChange={(e) => handleInputChange('notifications', 'eventReminders', e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+                </label>
+              </div>
+
+              {/* Event Updates */}
+              <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                <div>
+                  <h4 className="font-medium text-gray-900">Event Updates</h4>
+                  <p className="text-sm text-gray-500">Notifications when events you're registered for are updated</p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={notificationSettings.participantUpdates}
+                    onChange={(e) => handleInputChange('notifications', 'participantUpdates', e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+                </label>
+              </div>
+
+              {/* System Alerts */}
+              <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                <div>
+                  <h4 className="font-medium text-gray-900">System Alerts</h4>
+                  <p className="text-sm text-gray-500">Important system notifications and tips</p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={notificationSettings.systemAlerts}
+                    onChange={(e) => handleInputChange('notifications', 'systemAlerts', e.target.checked)}
                     className="sr-only peer"
                   />
                   <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
@@ -1333,65 +1034,102 @@ const Settings = () => {
               </div>
             </div>
 
-            <div className="bg-yellow-50 p-4 rounded-lg">
-              <h4 className="font-medium text-yellow-900 mb-2">Notification Preferences</h4>
-              <p className="text-sm text-yellow-800">
-                You can customize how and when you receive notifications. Critical system alerts cannot be disabled.
-                Smart notifications are limited to 2-3 per day to avoid spam.
-              </p>
-            </div>
-          </div>
-        );
-
-      case 'ai':
-        return (
-          <div className="space-y-6">
-            <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-6 rounded-lg border border-purple-200">
-              <div className="flex items-center mb-4">
-                <Sparkles className="text-purple-600 mr-3" size={24} />
-                <h3 className="text-lg font-semibold text-purple-900">AI-Powered Features</h3>
+            {/* Notification Limits */}
+            <div className="space-y-4 border-t border-gray-200 pt-6">
+              <h3 className="text-lg font-medium text-gray-900">Notification Controls</h3>
+              
+              {/* Max Daily Notifications */}
+              <div className="p-4 border border-gray-200 rounded-lg">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Max Daily Notifications: {smartNotificationPreferences.max_daily_notifications}
+                </label>
+                <input
+                  type="range"
+                  min="1"
+                  max="10"
+                  value={smartNotificationPreferences.max_daily_notifications}
+                  onChange={(e) => setSmartNotificationPreferences(prev => ({ ...prev, max_daily_notifications: parseInt(e.target.value) }))}
+                  className="w-full"
+                />
+                <p className="text-xs text-gray-500 mt-1">Limit how many notifications you receive per day</p>
               </div>
-              <p className="text-purple-800 mb-4">
-                EventEase uses artificial intelligence to provide smart insights, automated scheduling, and predictive analytics.
-                Customize which AI features you want to enable for your events.
-              </p>
+
+              {/* Priority Level */}
+              <div className="p-4 border border-gray-200 rounded-lg">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Priority Level</label>
+                <select
+                  value={smartNotificationPreferences.priority_level}
+                  onChange={(e) => setSmartNotificationPreferences(prev => ({ ...prev, priority_level: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="all">All notifications</option>
+                  <option value="high-priority">High priority only</option>
+                  <option value="urgent-only">Urgent only</option>
+                </select>
+                <p className="text-xs text-gray-500 mt-1">Filter notifications by importance</p>
+              </div>
             </div>
 
-            <div className="space-y-4">
-              {Object.entries(aiSettings).map(([key, value]) => (
-                <div key={key} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                  <div>
-                    <h4 className="font-medium text-gray-900 capitalize">
-                      {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
-                    </h4>
-                    <p className="text-sm text-gray-500">
-                      {key === 'aiInsights' && 'AI-generated insights and recommendations'}
-                      {key === 'smartRecommendations' && 'Smart event suggestions and optimizations'}
-                      {key === 'automatedScheduling' && 'AI-powered scheduling and conflict resolution'}
-                      {key === 'predictiveAnalytics' && 'Predictive insights for event success'}
-                      {key === 'sentimentAnalysis' && 'Analyze participant feedback and sentiment'}
-                      {key === 'autoTagging' && 'Automatic event categorization and tagging'}
-                    </p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={value}
-                      onChange={(e) => handleInputChange('ai', key, e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
-                  </label>
+            {/* Quiet Hours */}
+            <div className="space-y-4 border-t border-gray-200 pt-6">
+              <h3 className="text-lg font-medium text-gray-900">Quiet Hours</h3>
+              
+              <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                <div>
+                  <h4 className="font-medium text-gray-900">Enable Quiet Hours</h4>
+                  <p className="text-sm text-gray-500">No notifications during specified hours</p>
                 </div>
-              ))}
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={smartNotificationPreferences.quiet_hours.enabled}
+                    onChange={(e) => setSmartNotificationPreferences(prev => ({
+                      ...prev,
+                      quiet_hours: { ...prev.quiet_hours, enabled: e.target.checked }
+                    }))}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+                </label>
+              </div>
+              
+              {smartNotificationPreferences.quiet_hours.enabled && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Start Time</label>
+                    <input
+                      type="time"
+                      value={smartNotificationPreferences.quiet_hours.start}
+                      onChange={(e) => setSmartNotificationPreferences(prev => ({
+                        ...prev,
+                        quiet_hours: { ...prev.quiet_hours, start: e.target.value }
+                      }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">End Time</label>
+                    <input
+                      type="time"
+                      value={smartNotificationPreferences.quiet_hours.end}
+                      onChange={(e) => setSmartNotificationPreferences(prev => ({
+                        ...prev,
+                        quiet_hours: { ...prev.quiet_hours, end: e.target.value }
+                      }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="bg-blue-50 p-4 rounded-lg">
-              <h4 className="font-medium text-blue-900 mb-2">AI Learning</h4>
-              <p className="text-sm text-blue-800">
-                The AI system learns from your event data to provide better recommendations over time.
-                Your data is anonymized and used only to improve the AI features.
-              </p>
+              <h4 className="font-medium text-blue-900 mb-2">How Notifications Work</h4>
+              <ul className="text-sm text-blue-800 space-y-1">
+                <li>• <strong>Event Reminders:</strong> You'll be notified before events you've registered for</li>
+                <li>• <strong>Event Updates:</strong> Get notified when organizers change event details</li>
+                <li>• <strong>System Alerts:</strong> Important tips and platform updates</li>
+              </ul>
             </div>
           </div>
         );
@@ -1399,8 +1137,10 @@ const Settings = () => {
       case 'security':
         return (
           <div className="space-y-6">
+            {/* Password Change - Functional */}
             <div className="space-y-4">
-              <h3 className="text-lg font-medium text-gray-900">Password Change</h3>
+              <h3 className="text-lg font-medium text-gray-900">Change Password</h3>
+              <p className="text-sm text-gray-600">Update your password to keep your account secure.</p>
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1412,11 +1152,12 @@ const Settings = () => {
                       value={passwordData.currentPassword}
                       onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
                       className="input-field pr-10"
+                      placeholder="Enter current password"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700"
                     >
                       {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                     </button>
@@ -1432,6 +1173,7 @@ const Settings = () => {
                     value={passwordData.newPassword}
                     onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
                     className="input-field"
+                    placeholder="Enter new password (min. 6 characters)"
                   />
                 </div>
                 
@@ -1445,11 +1187,12 @@ const Settings = () => {
                       value={passwordData.confirmPassword}
                       onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
                       className="input-field pr-10"
+                      placeholder="Confirm new password"
                     />
                     <button
                       type="button"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700"
                     >
                       {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                     </button>
@@ -1457,138 +1200,120 @@ const Settings = () => {
                 </div>
                 
                 {passwordError && (
-                  <div className="text-red-600 text-sm">{passwordError}</div>
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-600 text-sm">
+                    {passwordError}
+                  </div>
                 )}
                 
                 <button
                   onClick={handlePasswordChange}
-                  className="btn-secondary"
+                  disabled={!passwordData.newPassword || !passwordData.confirmPassword}
+                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Change Password
+                  Update Password
                 </button>
               </div>
             </div>
 
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium text-gray-900">Two-Factor Authentication</h3>
-              <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                <div>
-                  <h4 className="font-medium text-gray-900">Enable 2FA</h4>
-                  <p className="text-sm text-gray-500">
-                    Add an extra layer of security to your account with two-factor authentication
-                  </p>
+            {/* Account Information */}
+            <div className="space-y-4 border-t border-gray-200 pt-6">
+              <h3 className="text-lg font-medium text-gray-900">Account Information</h3>
+              <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Email</span>
+                  <span className="text-sm font-medium text-gray-900">{user?.email}</span>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={securitySettings.twoFactorAuth}
-                    onChange={(e) => handleInputChange('security', 'twoFactorAuth', e.target.checked)}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
-                </label>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium text-gray-900">Session Management</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Session Timeout (minutes)
-                  </label>
-                  <select
-                    value={securitySettings.sessionTimeout}
-                    onChange={(e) => handleInputChange('security', 'sessionTimeout', parseInt(e.target.value))}
-                    className="input-field"
-                  >
-                    <option value={15}>15 minutes</option>
-                    <option value={30}>30 minutes</option>
-                    <option value={60}>1 hour</option>
-                    <option value={120}>2 hours</option>
-                    <option value={480}>8 hours</option>
-                  </select>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Account Created</span>
+                  <span className="text-sm font-medium text-gray-900">
+                    {user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
+                  </span>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Password Expiry (days)
-                  </label>
-                  <select
-                    value={securitySettings.passwordExpiry}
-                    onChange={(e) => handleInputChange('security', 'passwordExpiry', parseInt(e.target.value))}
-                    className="input-field"
-                  >
-                    <option value={30}>30 days</option>
-                    <option value={60}>60 days</option>
-                    <option value={90}>90 days</option>
-                    <option value={180}>180 days</option>
-                    <option value={365}>1 year</option>
-                  </select>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Last Sign In</span>
+                  <span className="text-sm font-medium text-gray-900">
+                    {user?.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString() : 'N/A'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Role</span>
+                  <span className="text-sm font-medium text-gray-900">
+                    {user?.user_metadata?.role || 'Regular User'}
+                  </span>
                 </div>
               </div>
             </div>
 
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium text-gray-900">Security Alerts</h3>
-              <div className="space-y-3">
-                {['loginNotifications', 'suspiciousActivityAlerts'].map((key) => (
-                  <div key={key} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                    <div>
-                      <h4 className="font-medium text-gray-900 capitalize">
-                        {key === 'loginNotifications' ? 'Login Notifications' : 'Suspicious Activity Alerts'}
-                      </h4>
-                      <p className="text-sm text-gray-500">
-                        {key === 'loginNotifications' && 'Get notified of new login attempts'}
-                        {key === 'suspiciousActivityAlerts' && 'Alerts for unusual account activity'}
-                      </p>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={securitySettings[key]}
-                        onChange={(e) => handleInputChange('security', key, e.target.checked)}
-                        className="sr-only peer"
-                      />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
-                    </label>
+            {/* Download My Data */}
+            <div className="space-y-4 border-t border-gray-200 pt-6">
+              <h3 className="text-lg font-medium text-gray-900">Download My Data</h3>
+              <p className="text-sm text-gray-600">
+                Download a copy of all your personal data stored in EventEase. This includes your profile information, 
+                registered events, verification status, and any events you've created.
+              </p>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="flex items-start space-x-4">
+                  <div className="p-3 bg-primary-100 rounded-lg">
+                    <FileDown className="text-primary-600" size={24} />
                   </div>
-                ))}
+                  <div className="flex-1">
+                    <h4 className="font-medium text-gray-900">Your Data Export Includes:</h4>
+                    <ul className="text-sm text-gray-600 mt-2 space-y-1">
+                      <li>• Profile information (name, email, phone, etc.)</li>
+                      <li>• Account details (created date, last sign in)</li>
+                      <li>• All events you've registered for</li>
+                      <li>• Verification status and history</li>
+                      {(user?.user_metadata?.role === 'Organizer' || 
+                        user?.user_metadata?.role === 'Administrator' || 
+                        user?.user_metadata?.role === 'Admin') && (
+                        <>
+                          <li>• Events you've created</li>
+                          <li>• Participant lists for your events</li>
+                        </>
+                      )}
+                    </ul>
+                  </div>
+                </div>
+                <button
+                  onClick={async () => {
+                    setDownloadingData(true);
+                    try {
+                      await userDataExportService.downloadUserDataPDF(user.id, user);
+                      success('Your data has been downloaded successfully!');
+                    } catch (error) {
+                      console.error('Error downloading data:', error);
+                      showError('Failed to download your data. Please try again.');
+                    } finally {
+                      setDownloadingData(false);
+                    }
+                  }}
+                  disabled={downloadingData}
+                  className="mt-4 btn-primary w-full flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {downloadingData ? (
+                    <>
+                      <Loader2 size={20} className="mr-2 animate-spin" />
+                      Generating PDF...
+                    </>
+                  ) : (
+                    <>
+                      <Download size={20} className="mr-2" />
+                      Download My Data (PDF)
+                    </>
+                  )}
+                </button>
               </div>
             </div>
 
-            <div className="bg-red-50 p-4 rounded-lg">
-              <h4 className="font-medium text-red-900 mb-2">Security Notice</h4>
-              <p className="text-sm text-red-800">
-                These security settings help protect your account and event data. We recommend enabling two-factor authentication for enhanced security.
-              </p>
-            </div>
-          </div>
-        );
-
-      case 'integrations':
-        return (
-          <div className="space-y-6">
-            <div className="text-center py-12">
-              <Globe className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Integrations</h3>
-              <p className="text-gray-500 mb-6">
-                Connect EventEase with your favorite tools and services
-              </p>
-              <button className="btn-primary">Coming Soon</button>
-            </div>
-          </div>
-        );
-
-      case 'data':
-        return (
-          <div className="space-y-6">
-            <div className="text-center py-12">
-              <Database className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Data & Privacy</h3>
-              <p className="text-gray-500 mb-6">
-                Manage your data preferences and privacy settings
-              </p>
-              <button className="btn-primary">Coming Soon</button>
+            {/* Security Tips */}
+            <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
+              <h4 className="font-medium text-blue-900 mb-2">Security Tips</h4>
+              <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
+                <li>Use a strong, unique password with at least 8 characters</li>
+                <li>Include uppercase, lowercase, numbers, and special characters</li>
+                <li>Never share your password with anyone</li>
+                <li>Sign out when using shared or public computers</li>
+              </ul>
             </div>
           </div>
         );

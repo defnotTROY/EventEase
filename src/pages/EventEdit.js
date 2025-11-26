@@ -29,7 +29,9 @@ const EventEdit = () => {
     title: '',
     description: '',
     date: '',
-    time: '',
+    timeHour: '09',
+    timeMinute: '00',
+    timePeriod: 'AM',
     location: '',
     maxParticipants: '',
     category: '',
@@ -99,12 +101,48 @@ const EventEdit = () => {
           return;
         }
 
+        // Parse time into hour/minute/period
+        let timeHour = '09';
+        let timeMinute = '00';
+        let timePeriod = 'AM';
+        
+        if (event.time) {
+          // Handle formats like "09:00 AM", "14:00", "2:30 PM"
+          const timeStr = event.time.trim();
+          const ampmMatch = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+          const militaryMatch = timeStr.match(/^(\d{1,2}):(\d{2})$/);
+          
+          if (ampmMatch) {
+            timeHour = ampmMatch[1].padStart(2, '0');
+            timeMinute = ampmMatch[2];
+            timePeriod = ampmMatch[3].toUpperCase();
+          } else if (militaryMatch) {
+            let hour = parseInt(militaryMatch[1], 10);
+            timeMinute = militaryMatch[2];
+            if (hour === 0) {
+              timeHour = '12';
+              timePeriod = 'AM';
+            } else if (hour < 12) {
+              timeHour = hour.toString().padStart(2, '0');
+              timePeriod = 'AM';
+            } else if (hour === 12) {
+              timeHour = '12';
+              timePeriod = 'PM';
+            } else {
+              timeHour = (hour - 12).toString().padStart(2, '0');
+              timePeriod = 'PM';
+            }
+          }
+        }
+
         // Populate form with existing data
         setFormData({
           title: event.title || '',
           description: event.description || '',
           date: event.date || '',
-          time: event.time || '',
+          timeHour,
+          timeMinute,
+          timePeriod,
           location: event.location || '',
           maxParticipants: event.max_participants || '',
           category: event.category || '',
@@ -191,12 +229,21 @@ const EventEdit = () => {
         return;
       }
 
+      // Convert AM/PM time to 24-hour format for database storage
+      let hour24 = parseInt(formData.timeHour, 10);
+      if (formData.timePeriod === 'PM' && hour24 !== 12) {
+        hour24 += 12;
+      } else if (formData.timePeriod === 'AM' && hour24 === 12) {
+        hour24 = 0;
+      }
+      const formattedTime = `${hour24.toString().padStart(2, '0')}:${formData.timeMinute}`;
+
       // Prepare event data
       const eventData = {
         title: formData.title,
         description: formData.description,
         date: formData.date,
-        time: formData.time,
+        time: formattedTime,
         location: formData.location,
         max_participants: parseInt(formData.maxParticipants) || null,
         category: formData.category,
@@ -379,13 +426,38 @@ const EventEdit = () => {
                   <Clock className="inline mr-1" size={16} />
                   Time
                 </label>
-                <input
-                  type="time"
-                  name="time"
-                  value={formData.time}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                />
+                <div className="flex gap-2">
+                  <select
+                    name="timeHour"
+                    value={formData.timeHour}
+                    onChange={handleInputChange}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent w-20"
+                  >
+                    {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map(hour => (
+                      <option key={hour} value={hour}>{hour}</option>
+                    ))}
+                  </select>
+                  <span className="flex items-center text-gray-500 font-medium">:</span>
+                  <select
+                    name="timeMinute"
+                    value={formData.timeMinute}
+                    onChange={handleInputChange}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent w-20"
+                  >
+                    {['00', '15', '30', '45'].map(minute => (
+                      <option key={minute} value={minute}>{minute}</option>
+                    ))}
+                  </select>
+                  <select
+                    name="timePeriod"
+                    value={formData.timePeriod}
+                    onChange={handleInputChange}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent w-20"
+                  >
+                    <option value="AM">AM</option>
+                    <option value="PM">PM</option>
+                  </select>
+                </div>
               </div>
               
               <div>

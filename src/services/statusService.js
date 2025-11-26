@@ -141,37 +141,13 @@ export const statusService = {
     }
   },
 
-  // Auto-update all event statuses based on dates using database function
+  // Auto-update all event statuses based on dates
   async autoUpdateAllStatuses(userId = null) {
-    try {
-      // Call the database function to update all event statuses
-      // This is more efficient than fetching and updating individually
-      const { data, error } = await supabase.rpc('update_all_event_statuses');
-
-      if (error) {
-        console.error('Error calling update_all_event_statuses:', error);
-        // Fallback to user-specific update if RPC fails
-        if (userId) {
-          return await this.autoUpdateUserEvents(userId);
-        }
-        throw error;
-      }
-
-      const updatedCount = data || 0;
-      console.log(`StatusService: Updated ${updatedCount} event statuses via database function`);
-
-      return { 
-        data: { updated: updatedCount, total: updatedCount }, 
-        error: null 
-      };
-    } catch (error) {
-      console.error('Error auto-updating event statuses:', error);
-      // Fallback to user-specific update if available
-      if (userId) {
-        return await this.autoUpdateUserEvents(userId);
-      }
-      return { data: null, error };
+    // Use client-side status calculation (no database RPC needed)
+    if (userId) {
+      return await this.autoUpdateUserEvents(userId);
     }
+    return { data: { updated: 0, total: 0 }, error: null };
   },
 
   // Fallback: Update events for a specific user (used if RPC fails)

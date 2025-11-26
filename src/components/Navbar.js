@@ -16,7 +16,9 @@ const Navbar = ({ onMenuClick }) => {
   const [searchResults, setSearchResults] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const mobileSearchInputRef = useRef(null);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -57,7 +59,7 @@ const Navbar = ({ onMenuClick }) => {
   }, []);
 
   // Load notifications
-  const loadNotifications = async (userId) => {
+  const loadNotifications = async (userId, forceGenerate = false) => {
     try {
       const { data, error } = await notificationService.getNotifications(userId, {
         limit: 20,
@@ -67,6 +69,16 @@ const Navbar = ({ onMenuClick }) => {
       if (error) {
         console.error('Error loading notifications:', error);
         return;
+      }
+
+      // If no notifications exist and user clicks, generate some
+      if ((!data || data.length === 0) && forceGenerate) {
+        console.log('No notifications found, generating activity notifications...');
+        const { data: generated } = await notificationService.generateActivityNotifications(userId);
+        if (generated && generated.length > 0) {
+          setNotifications(generated);
+          return;
+        }
       }
 
       setNotifications(data || []);
@@ -172,7 +184,8 @@ const Navbar = ({ onMenuClick }) => {
     setShowSearchResults(true);
 
     try {
-      const results = await searchService.globalSearch(user.id, searchQuery.trim());
+      const userRole = user?.user_metadata?.role;
+      const results = await searchService.globalSearch(user.id, searchQuery.trim(), userRole);
       setSearchResults(results);
     } catch (error) {
       console.error('Search error:', error);
@@ -193,7 +206,8 @@ const Navbar = ({ onMenuClick }) => {
         if (user) {
           setIsSearching(true);
           try {
-            const results = await searchService.globalSearch(user.id, value.trim());
+            const userRole = user?.user_metadata?.role;
+            const results = await searchService.globalSearch(user.id, value.trim(), userRole);
             setSearchResults(results);
             setShowSearchResults(true);
           } catch (error) {
@@ -373,13 +387,26 @@ const Navbar = ({ onMenuClick }) => {
 
           {/* Right side */}
           <div className="flex items-center space-x-4">
+            {/* Mobile Search Button */}
+            <button
+              onClick={() => {
+                setShowMobileSearch(true);
+                setTimeout(() => mobileSearchInputRef.current?.focus(), 100);
+              }}
+              className="md:hidden p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+              aria-label="Search"
+            >
+              <Search size={20} />
+            </button>
+
             {/* Notifications */}
             <div className="relative notification-container">
               <button
                 onClick={async () => {
                   // Refresh notifications when opening the dropdown
+                  // Pass true to generate notifications if none exist
                   if (!showNotifications && user) {
-                    await loadNotifications(user.id);
+                    await loadNotifications(user.id, true);
                   }
                   setShowNotifications(!showNotifications);
                 }}
@@ -523,6 +550,71 @@ const Navbar = ({ onMenuClick }) => {
           </div>
         </div>
       </div>
+
+      {/* Mobile Search Popup */}
+      {showMobileSearch && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => {
+              setShowMobileSearch(false);
+              setShowSearchResults(false);
+              setSearchResults(null);
+            }}
+          />
+          
+          {/* Search Container */}
+          <div className="absolute top-0 left-0 right-0 bg-white shadow-lg p-4 animate-slide-down">
+            <form onSubmit={(e) => {
+              handleSearch(e);
+            }} className="relative">
+              <div className="flex items-center gap-2">
+                <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                  <input
+                    ref={mobileSearchInputRef}
+                    type="text"
+                    placeholder="Search events, participants..."
+                    value={searchQuery}
+                    onChange={handleSearchInputChange}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-base"
+                  />
+                  {isSearching && (
+                    <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 animate-spin" size={16} />
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMobileSearch(false);
+                    setShowSearchResults(false);
+                    setSearchResults(null);
+                    setSearchQuery('');
+                  }}
+                  className="p-3 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              
+              {/* Mobile Search Results */}
+              {showSearchResults && searchResults && (
+                <div className="mt-2 bg-white border border-gray-200 rounded-lg shadow-lg max-h-[60vh] overflow-y-auto">
+                  <SearchResults 
+                    results={searchResults} 
+                    searchQuery={searchQuery}
+                    onClose={() => {
+                      setShowSearchResults(false);
+                      setShowMobileSearch(false);
+                    }}
+                  />
+                </div>
+              )}
+            </form>
+          </div>
+        </div>
+      )}
     </nav>
   );
 };

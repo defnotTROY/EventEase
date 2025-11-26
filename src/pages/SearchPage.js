@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Search, Calendar, Users, MapPin, Clock, Eye, Loader2 } from 'lucide-react';
+import { Search, Calendar, Users, MapPin, Clock, Eye, Loader2, Bookmark, FolderOpen } from 'lucide-react';
 import { auth } from '../lib/supabase';
 import { searchService } from '../services/searchService';
 
@@ -42,7 +42,8 @@ const SearchPage = () => {
 
     setIsSearching(true);
     try {
-      const results = await searchService.globalSearch(user.id, searchQuery.trim());
+      const userRole = user?.user_metadata?.role;
+      const results = await searchService.globalSearch(user.id, searchQuery.trim(), userRole);
       setSearchResults(results);
     } catch (error) {
       console.error('Search error:', error);
@@ -67,6 +68,15 @@ const SearchPage = () => {
       month: 'short',
       day: 'numeric'
     });
+  };
+
+  const isEventPast = (event) => {
+    if (!event.date) return false;
+    const eventDate = new Date(event.date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    eventDate.setHours(0, 0, 0, 0);
+    return eventDate < today;
   };
 
   const handleEventClick = (eventId) => {
@@ -125,34 +135,99 @@ const SearchPage = () => {
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <p className="text-blue-800">
               Found <span className="font-semibold">{searchResults.total}</span> results for "{searchQuery}"
-              {searchResults.events.length > 0 && (
+              {(searchResults.registeredEvents?.length > 0) && (
+                <span> • <span className="font-semibold">{searchResults.registeredEvents.length}</span> registrations</span>
+              )}
+              {(searchResults.myEvents?.length > 0) && (
+                <span> • <span className="font-semibold">{searchResults.myEvents.length}</span> my events</span>
+              )}
+              {searchResults.events?.length > 0 && (
                 <span> • <span className="font-semibold">{searchResults.events.length}</span> events</span>
               )}
-              {searchResults.participants.length > 0 && (
+              {searchResults.participants?.length > 0 && (
                 <span> • <span className="font-semibold">{searchResults.participants.length}</span> participants</span>
               )}
             </p>
           </div>
 
-          {/* Events Results */}
-          {searchResults.events.length > 0 && (
+          {/* My Registrations (for regular users) */}
+          {searchResults.registeredEvents?.length > 0 && (
             <div className="bg-white rounded-lg shadow-sm border border-gray-200">
               <div className="p-6 border-b border-gray-200">
                 <div className="flex items-center">
-                  <Calendar className="h-5 w-5 text-blue-600 mr-2" />
-                  <h2 className="text-lg font-semibold text-gray-900">Events ({searchResults.events.length})</h2>
+                  <Bookmark className="h-5 w-5 text-green-600 mr-2" />
+                  <h2 className="text-lg font-semibold text-gray-900">My Registrations ({searchResults.registeredEvents.length})</h2>
                 </div>
               </div>
               <div className="divide-y divide-gray-200">
-                {searchResults.events.map((event) => (
+                {searchResults.registeredEvents.map((event) => (
                   <div
                     key={event.id}
                     onClick={() => handleEventClick(event.id)}
-                    className="p-6 hover:bg-gray-50 cursor-pointer"
+                    className={`p-6 hover:bg-gray-50 cursor-pointer ${isEventPast(event) ? 'opacity-75' : ''}`}
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">{event.title}</h3>
+                        <div className="flex items-center gap-2 mb-2 flex-wrap">
+                          <h3 className="text-lg font-medium text-gray-900">{event.title}</h3>
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">
+                            Registered
+                          </span>
+                          {isEventPast(event) && (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium">
+                              Past
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-gray-600 mb-3 line-clamp-2">{event.description}</p>
+                        <div className="flex items-center space-x-6 text-sm text-gray-500">
+                          <div className="flex items-center">
+                            <Calendar className="h-4 w-4 mr-1" />
+                            {formatDate(event.date)}
+                          </div>
+                          <div className="flex items-center">
+                            <MapPin className="h-4 w-4 mr-1" />
+                            {event.location || 'Location TBD'}
+                          </div>
+                        </div>
+                      </div>
+                      <Eye className="h-5 w-5 text-gray-400 ml-4" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* My Created Events (for organizers/admins) */}
+          {searchResults.myEvents?.length > 0 && (
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+              <div className="p-6 border-b border-gray-200">
+                <div className="flex items-center">
+                  <FolderOpen className="h-5 w-5 text-purple-600 mr-2" />
+                  <h2 className="text-lg font-semibold text-gray-900">My Events ({searchResults.myEvents.length})</h2>
+                </div>
+              </div>
+              <div className="divide-y divide-gray-200">
+                {searchResults.myEvents.map((event) => (
+                  <div
+                    key={event.id}
+                    onClick={() => handleEventClick(event.id)}
+                    className={`p-6 hover:bg-gray-50 cursor-pointer ${isEventPast(event) ? 'opacity-75' : ''}`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2 flex-wrap">
+                          <h3 className="text-lg font-medium text-gray-900">{event.title}</h3>
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium">
+                            Created by you
+                          </span>
+                          {isEventPast(event) && (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium">
+                              Past
+                            </span>
+                          )}
+                        </div>
                         <p className="text-gray-600 mb-3 line-clamp-2">{event.description}</p>
                         <div className="flex items-center space-x-6 text-sm text-gray-500">
                           <div className="flex items-center">
@@ -177,12 +252,64 @@ const SearchPage = () => {
             </div>
           )}
 
-          {/* Participants Results */}
-          {searchResults.participants.length > 0 && (
+          {/* Discover Events */}
+          {searchResults.events?.length > 0 && (
             <div className="bg-white rounded-lg shadow-sm border border-gray-200">
               <div className="p-6 border-b border-gray-200">
                 <div className="flex items-center">
-                  <Users className="h-5 w-5 text-green-600 mr-2" />
+                  <Search className="h-5 w-5 text-blue-600 mr-2" />
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    {searchResults.isOrganizerOrAdmin ? 'All Events' : 'Discover Events'} ({searchResults.events.length})
+                  </h2>
+                </div>
+              </div>
+              <div className="divide-y divide-gray-200">
+                {searchResults.events.map((event) => (
+                  <div
+                    key={event.id}
+                    onClick={() => handleEventClick(event.id)}
+                    className={`p-6 hover:bg-gray-50 cursor-pointer ${isEventPast(event) ? 'opacity-75' : ''}`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2 flex-wrap">
+                          <h3 className="text-lg font-medium text-gray-900">{event.title}</h3>
+                          {isEventPast(event) && (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium">
+                              Past
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-gray-600 mb-3 line-clamp-2">{event.description}</p>
+                        <div className="flex items-center space-x-6 text-sm text-gray-500">
+                          <div className="flex items-center">
+                            <Calendar className="h-4 w-4 mr-1" />
+                            {formatDate(event.date)}
+                          </div>
+                          <div className="flex items-center">
+                            <MapPin className="h-4 w-4 mr-1" />
+                            {event.location || 'Location TBD'}
+                          </div>
+                          <div className="flex items-center">
+                            <Clock className="h-4 w-4 mr-1" />
+                            {event.time || 'Time TBD'}
+                          </div>
+                        </div>
+                      </div>
+                      <Eye className="h-5 w-5 text-gray-400 ml-4" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Participants Results (for organizers/admins) */}
+          {searchResults.participants?.length > 0 && (
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+              <div className="p-6 border-b border-gray-200">
+                <div className="flex items-center">
+                  <Users className="h-5 w-5 text-orange-600 mr-2" />
                   <h2 className="text-lg font-semibold text-gray-900">Participants ({searchResults.participants.length})</h2>
                 </div>
               </div>

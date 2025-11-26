@@ -5,8 +5,6 @@ import {
   Search, 
   Filter, 
   MoreVertical, 
-  Edit, 
-  Trash2, 
   Shield, 
   UserCheck,
   UserX,
@@ -15,7 +13,9 @@ import {
   Calendar,
   Loader2,
   RefreshCw,
-  Plus
+  Plus,
+  X,
+  AlertTriangle
 } from 'lucide-react';
 import { auth } from '../lib/supabase';
 import { adminService } from '../services/adminService';
@@ -34,6 +34,11 @@ const AdminUserManagement = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [totalUsersCount, setTotalUsersCount] = useState(0);
   const [actionLoading, setActionLoading] = useState(null);
+  
+  // Modal states
+  const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [selectedUserForAction, setSelectedUserForAction] = useState(null);
 
   useEffect(() => {
     const checkAdminAccess = async () => {
@@ -165,37 +170,25 @@ const AdminUserManagement = () => {
     }).length;
   };
 
-  // Handle role update
-  const handleUpdateRole = async (userId, currentRole) => {
-    if (!window.confirm(`Are you sure you want to change this user's role?`)) return;
-    
-    const roles = ['User', 'Event Organizer', 'Administrator'];
-    const currentIndex = roles.indexOf(currentRole);
-    const nextRole = roles[(currentIndex + 1) % roles.length];
-    
-    setActionLoading(userId);
-    try {
-      await adminService.updateUserRole(userId, nextRole.toLowerCase());
-      toast.success(`User role updated to ${nextRole}`);
-      await loadUsers();
-    } catch (error) {
-      toast.error(`Unable to update user role: ${error.message || 'An unexpected error occurred.'}`);
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  // Handle status update
-  const handleUpdateStatus = async (userId, currentStatus) => {
+  // Open status change modal
+  const openStatusModal = (userItem) => {
     const statusMap = {
       'active': 'inactive',
       'inactive': 'suspended',
       'suspended': 'active'
     };
-    const newStatus = statusMap[currentStatus] || 'inactive';
+    const newStatus = statusMap[userItem.status] || 'inactive';
+    setSelectedUserForAction({ ...userItem, newStatus });
+    setShowStatusModal(true);
+  };
+
+  // Handle status update (called from modal)
+  const confirmUpdateStatus = async () => {
+    if (!selectedUserForAction) return;
     
-    if (!window.confirm(`Are you sure you want to change this user's status to ${newStatus}?`)) return;
+    const { id: userId, newStatus } = selectedUserForAction;
     
+    setShowStatusModal(false);
     setActionLoading(userId);
     try {
       await adminService.updateUserStatus(userId, newStatus);
@@ -205,29 +198,23 @@ const AdminUserManagement = () => {
       toast.error(`Unable to update user status: ${error.message || 'An unexpected error occurred.'}`);
     } finally {
       setActionLoading(null);
+      setSelectedUserForAction(null);
     }
   };
 
-  // Handle user deletion
-  const handleDeleteUser = async (userId, userName) => {
-    if (!window.confirm(`Are you sure you want to delete ${userName}? This action cannot be undone.`)) return;
-    
-    setActionLoading(userId);
-    try {
-      await adminService.deleteUser(userId);
-      toast.success('User has been deleted successfully.');
-      await loadUsers();
-    } catch (error) {
-      toast.error(`Unable to delete user: ${error.message || 'An unexpected error occurred.'}`);
-    } finally {
-      setActionLoading(null);
-    }
+  // Open password reset modal
+  const openResetPasswordModal = (userItem) => {
+    setSelectedUserForAction(userItem);
+    setShowResetPasswordModal(true);
   };
 
-  // Handle password reset
-  const handleResetPassword = async (userEmail) => {
-    if (!window.confirm(`Send password reset email to ${userEmail}?`)) return;
+  // Handle password reset (called from modal)
+  const confirmResetPassword = async () => {
+    if (!selectedUserForAction) return;
     
+    const userEmail = selectedUserForAction.email;
+    
+    setShowResetPasswordModal(false);
     try {
       // Use Supabase auth reset password
       const { error } = await auth.resetPassword(userEmail);
@@ -235,6 +222,8 @@ const AdminUserManagement = () => {
       toast.success(`Password reset email has been sent to ${userEmail}.`);
     } catch (error) {
       toast.error(`Unable to send password reset email: ${error.message || 'An unexpected error occurred.'}`);
+    } finally {
+      setSelectedUserForAction(null);
     }
   };
 
@@ -445,26 +434,14 @@ const AdminUserManagement = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end space-x-2">
                         <button
-                          onClick={() => handleUpdateRole(userItem.id, userItem.role)}
-                          disabled={actionLoading === userItem.id}
-                          className="text-primary-600 hover:text-primary-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                          title="Change Role"
-                        >
-                          {actionLoading === userItem.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                          <Edit className="h-4 w-4" />
-                          )}
-                        </button>
-                        <button
-                          onClick={() => handleResetPassword(userItem.email)}
+                          onClick={() => openResetPasswordModal(userItem)}
                           className="text-blue-600 hover:text-blue-900"
                           title="Reset Password"
                         >
                           <Mail className="h-4 w-4" />
                         </button>
                         <button
-                          onClick={() => handleUpdateStatus(userItem.id, userItem.status)}
+                          onClick={() => openStatusModal(userItem)}
                           disabled={actionLoading === userItem.id}
                           className="text-yellow-600 hover:text-yellow-900 disabled:opacity-50 disabled:cursor-not-allowed"
                           title="Change Status"
@@ -473,18 +450,6 @@ const AdminUserManagement = () => {
                             <Loader2 className="h-4 w-4 animate-spin" />
                           ) : (
                           <UserX className="h-4 w-4" />
-                          )}
-                        </button>
-                        <button
-                          onClick={() => handleDeleteUser(userItem.id, `${userItem.first_name || ''} ${userItem.last_name || ''}`.trim() || 'User')}
-                          disabled={actionLoading === userItem.id || userItem.id === user?.id}
-                          className="text-red-600 hover:text-red-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                          title={userItem.id === user?.id ? "Cannot delete your own account" : "Delete User"}
-                        >
-                          {actionLoading === userItem.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                          <Trash2 className="h-4 w-4" />
                           )}
                         </button>
                       </div>
@@ -507,6 +472,129 @@ const AdminUserManagement = () => {
           </div>
         </div>
       </div>
+
+      {/* Reset Password Confirmation Modal */}
+      {showResetPasswordModal && selectedUserForAction && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">Reset Password</h3>
+              <button
+                onClick={() => {
+                  setShowResetPasswordModal(false);
+                  setSelectedUserForAction(null);
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                  <Mail className="h-5 w-5 text-blue-600" />
+                </div>
+                <div>
+                  <p className="font-medium text-gray-900">
+                    {selectedUserForAction.first_name} {selectedUserForAction.last_name}
+                  </p>
+                  <p className="text-sm text-gray-500">{selectedUserForAction.email}</p>
+                </div>
+              </div>
+              <p className="text-gray-600">
+                Are you sure you want to send a password reset email to this user?
+              </p>
+            </div>
+            <div className="flex justify-end gap-3 p-4 bg-gray-50 border-t border-gray-200">
+              <button
+                onClick={() => {
+                  setShowResetPasswordModal(false);
+                  setSelectedUserForAction(null);
+                }}
+                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmResetPassword}
+                className="px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 font-medium"
+              >
+                Send Reset Email
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Change Status Confirmation Modal */}
+      {showStatusModal && selectedUserForAction && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">Change User Status</h3>
+              <button
+                onClick={() => {
+                  setShowStatusModal(false);
+                  setSelectedUserForAction(null);
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center">
+                  <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                </div>
+                <div>
+                  <p className="font-medium text-gray-900">
+                    {selectedUserForAction.first_name} {selectedUserForAction.last_name}
+                  </p>
+                  <p className="text-sm text-gray-500">{selectedUserForAction.email}</p>
+                </div>
+              </div>
+              <p className="text-gray-600 mb-3">
+                Are you sure you want to change this user's status?
+              </p>
+              <div className="flex items-center gap-2 text-sm">
+                <span className={`px-2 py-1 rounded-full font-medium ${
+                  selectedUserForAction.status === 'active' ? 'bg-green-100 text-green-800' :
+                  selectedUserForAction.status === 'inactive' ? 'bg-gray-100 text-gray-800' :
+                  'bg-red-100 text-red-800'
+                }`}>
+                  {selectedUserForAction.status || 'active'}
+                </span>
+                <span className="text-gray-400">→</span>
+                <span className={`px-2 py-1 rounded-full font-medium ${
+                  selectedUserForAction.newStatus === 'active' ? 'bg-green-100 text-green-800' :
+                  selectedUserForAction.newStatus === 'inactive' ? 'bg-gray-100 text-gray-800' :
+                  'bg-red-100 text-red-800'
+                }`}>
+                  {selectedUserForAction.newStatus}
+                </span>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 p-4 bg-gray-50 border-t border-gray-200">
+              <button
+                onClick={() => {
+                  setShowStatusModal(false);
+                  setSelectedUserForAction(null);
+                }}
+                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmUpdateStatus}
+                className="px-4 py-2 text-white bg-yellow-600 rounded-lg hover:bg-yellow-700 font-medium"
+              >
+                Change Status
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

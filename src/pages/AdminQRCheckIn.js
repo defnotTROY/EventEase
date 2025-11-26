@@ -50,6 +50,26 @@ const AdminQRCheckIn = () => {
   const [showParticipantDetails, setShowParticipantDetails] = useState(false); // Show/hide participant details
   const lastLoadedEventIdRef = useRef(null); // Track which event we've loaded to prevent unnecessary reloads
 
+  // Helper function to check if an event is checkable (today or ongoing only)
+  const isEventCheckable = useCallback((event) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const eventDate = new Date(event.date);
+    eventDate.setHours(0, 0, 0, 0);
+    
+    // Event is checkable if:
+    // 1. It's happening today
+    // 2. It's ongoing (started but not completed)
+    // 3. It's not cancelled or completed
+    const isToday = eventDate.getTime() === today.getTime();
+    const isOngoing = event.status === 'ongoing';
+    const isCancelled = event.status === 'cancelled';
+    const isCompleted = event.status === 'completed';
+    
+    return (isToday || isOngoing) && !isCancelled && !isCompleted;
+  }, []);
+
   // Define loadEvents before useEffects that use it
   const loadEvents = useCallback(async () => {
     if (!user) return;
@@ -75,12 +95,18 @@ const AdminQRCheckIn = () => {
         eventsData = [];
       }
       
-      setEvents(eventsData);
+      // Filter to only show checkable events (today, ongoing, or past - not future)
+      const checkableEvents = eventsData.filter(event => isEventCheckable(event));
+      
+      // Sort by date (most recent first)
+      checkableEvents.sort((a, b) => new Date(b.date) - new Date(a.date));
+      
+      setEvents(checkableEvents);
     } catch (error) {
       console.error('Error loading events:', error);
       toast.error('Failed to load events. Please try again.');
     }
-  }, [user, toast]);
+  }, [user, toast, isEventCheckable]);
 
   useEffect(() => {
     const checkAdminAccess = async () => {
@@ -713,12 +739,31 @@ const AdminQRCheckIn = () => {
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
           >
             <option value="">-- Select an event --</option>
-            {events.map(event => (
-              <option key={event.id} value={event.id}>
-                {event.title} - {new Date(event.date).toLocaleDateString()}
-              </option>
-            ))}
+            {events.map(event => {
+              const eventDate = new Date(event.date);
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              eventDate.setHours(0, 0, 0, 0);
+              
+              const isToday = eventDate.getTime() === today.getTime();
+              const statusLabel = isToday ? '(Today)' : event.status === 'ongoing' ? '(Ongoing)' : '';
+              
+              return (
+                <option key={event.id} value={event.id}>
+                  {event.title} - {eventDate.toLocaleDateString()} {statusLabel}
+                </option>
+              );
+            })}
           </select>
+          
+          {events.length === 0 && (
+            <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-sm text-yellow-800">
+                <AlertCircle className="inline mr-2" size={16} />
+                No events available for check-in. Events must be happening today or be ongoing to allow check-ins.
+              </p>
+            </div>
+          )}
 
           {selectedEvent && (
             <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg overflow-hidden">
