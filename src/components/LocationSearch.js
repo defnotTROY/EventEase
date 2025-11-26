@@ -35,6 +35,10 @@ const LocationSearch = ({ value, onChange, placeholder = "Search for specific ve
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Track if API is available
+  const [apiAvailable, setApiAvailable] = useState(true);
+  const [apiError, setApiError] = useState(false);
+
   // Search for locations using Nominatim (OpenStreetMap) - free and supports country filtering
   const searchLocations = async (query) => {
     if (!query || query.length < 3) {
@@ -42,108 +46,131 @@ const LocationSearch = ({ value, onChange, placeholder = "Search for specific ve
       return;
     }
 
+    // Skip API call if we know it's not available
+    if (!apiAvailable) {
+      return;
+    }
+
     setLoading(true);
+    setApiError(false);
+    
     try {
       // Using Nominatim API with Philippines country restriction
-      // Include various place types for more specific results
+      // Note: Browser CORS restrictions may prevent custom headers
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+      
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?` +
         `q=${encodeURIComponent(query)}` +
         `&countrycodes=ph` + // Restrict to Philippines
         `&format=json` +
         `&addressdetails=1` +
-        `&extratags=1` + // Get extra tags for better place identification
-        `&namedetails=1` + // Get name details
-        `&limit=8`, // Increased limit for more specific results
+        `&limit=8`,
         {
-          headers: {
-            'User-Agent': 'EventEase/1.0' // Required by Nominatim
-          }
+          signal: controller.signal,
+          // Note: User-Agent header may be blocked by CORS in browser
         }
       );
+      
+      clearTimeout(timeoutId);
 
-      if (response.ok) {
-        const data = await response.json();
-        const formattedSuggestions = data.map((place) => {
-          const addr = place.address || {};
-          
-          // Build specific location name (venue, building, or landmark)
-          const specificName = place.name || 
-                             place.address?.name || 
-                             place.address?.amenity ||
-                             place.address?.building ||
-                             place.address?.road ||
-                             place.address?.house_number ||
-                             '';
-          
-          // Build full address components
-          const street = place.address?.road || '';
-          const streetNumber = place.address?.house_number || '';
-          const building = place.address?.building || '';
-          const venue = place.address?.amenity || place.address?.tourism || place.address?.shop || '';
-          
-          // Build address line
-          let addressLine = '';
-          if (streetNumber && street) {
-            addressLine = `${streetNumber} ${street}`;
-          } else if (street) {
-            addressLine = street;
-          } else if (building) {
-            addressLine = building;
-          } else if (venue) {
-            addressLine = venue;
-          }
-          
-          // Build location display
-          const city = addr.city || addr.town || addr.municipality || addr.village || '';
-          const province = addr.state || addr.province || addr.region || '';
-          const barangay = addr.suburb || addr.neighbourhood || addr.city_district || '';
-          
-          // Format display name for dropdown
-          let displayName = specificName || addressLine || place.display_name;
-          
-          // Add context to make it more specific
-          const contextParts = [];
-          if (addressLine && addressLine !== displayName) contextParts.push(addressLine);
-          if (barangay) contextParts.push(barangay);
-          if (city) contextParts.push(city);
-          if (province) contextParts.push(province);
-          
-          const context = contextParts.length > 0 ? contextParts.join(', ') : '';
-          
-          return {
-            id: place.place_id,
-            displayName: displayName, // Primary name
-            fullDisplayName: context ? `${displayName}, ${context}` : displayName, // Full address for display
-            address: place.address,
-            addressLine: addressLine,
-            specificName: specificName,
-            venue: venue,
-            building: building,
-            street: street,
-            streetNumber: streetNumber,
-            city: city,
-            province: province,
-            barangay: barangay,
-            latitude: parseFloat(place.lat),
-            longitude: parseFloat(place.lon),
-            postcode: addr.postcode || '',
-            placeType: place.type || place.class || 'location'
-          };
-        });
-
-        // Sort suggestions: prioritize venues, buildings, and specific places over general areas
-        formattedSuggestions.sort((a, b) => {
-          const aScore = (a.venue ? 3 : 0) + (a.building ? 2 : 0) + (a.addressLine ? 1 : 0);
-          const bScore = (b.venue ? 3 : 0) + (b.building ? 2 : 0) + (b.addressLine ? 1 : 0);
-          return bScore - aScore;
-        });
-
-        setSuggestions(formattedSuggestions);
-        setShowSuggestions(true);
+      if (!response.ok) {
+        // API returned an error (403 Forbidden, etc.)
+        console.warn('Location API returned error:', response.status);
+        setApiAvailable(false);
+        setApiError(true);
+        setSuggestions([]);
+        return;
       }
+
+      const data = await response.json();
+      const formattedSuggestions = data.map((place) => {
+        const addr = place.address || {};
+        
+        // Build specific location name (venue, building, or landmark)
+        const specificName = place.name || 
+                           place.address?.name || 
+                           place.address?.amenity ||
+                           place.address?.building ||
+                           place.address?.road ||
+                           place.address?.house_number ||
+                           '';
+        
+        // Build full address components
+        const street = place.address?.road || '';
+        const streetNumber = place.address?.house_number || '';
+        const building = place.address?.building || '';
+        const venue = place.address?.amenity || place.address?.tourism || place.address?.shop || '';
+        
+        // Build address line
+        let addressLine = '';
+        if (streetNumber && street) {
+          addressLine = `${streetNumber} ${street}`;
+        } else if (street) {
+          addressLine = street;
+        } else if (building) {
+          addressLine = building;
+        } else if (venue) {
+          addressLine = venue;
+        }
+        
+        // Build location display
+        const city = addr.city || addr.town || addr.municipality || addr.village || '';
+        const province = addr.state || addr.province || addr.region || '';
+        const barangay = addr.suburb || addr.neighbourhood || addr.city_district || '';
+        
+        // Format display name for dropdown
+        let displayName = specificName || addressLine || place.display_name;
+        
+        // Add context to make it more specific
+        const contextParts = [];
+        if (addressLine && addressLine !== displayName) contextParts.push(addressLine);
+        if (barangay) contextParts.push(barangay);
+        if (city) contextParts.push(city);
+        if (province) contextParts.push(province);
+        
+        const context = contextParts.length > 0 ? contextParts.join(', ') : '';
+        
+        return {
+          id: place.place_id,
+          displayName: displayName, // Primary name
+          fullDisplayName: context ? `${displayName}, ${context}` : displayName, // Full address for display
+          address: place.address,
+          addressLine: addressLine,
+          specificName: specificName,
+          venue: venue,
+          building: building,
+          street: street,
+          streetNumber: streetNumber,
+          city: city,
+          province: province,
+          barangay: barangay,
+          latitude: parseFloat(place.lat),
+          longitude: parseFloat(place.lon),
+          postcode: addr.postcode || '',
+          placeType: place.type || place.class || 'location'
+        };
+      });
+
+      // Sort suggestions: prioritize venues, buildings, and specific places over general areas
+      formattedSuggestions.sort((a, b) => {
+        const aScore = (a.venue ? 3 : 0) + (a.building ? 2 : 0) + (a.addressLine ? 1 : 0);
+        const bScore = (b.venue ? 3 : 0) + (b.building ? 2 : 0) + (b.addressLine ? 1 : 0);
+        return bScore - aScore;
+      });
+
+      setSuggestions(formattedSuggestions);
+      setShowSuggestions(formattedSuggestions.length > 0);
     } catch (error) {
-      console.error('Error searching locations:', error);
+      // Handle CORS errors, network errors, and timeouts gracefully
+      if (error.name === 'AbortError') {
+        console.warn('Location search timed out');
+      } else {
+        console.warn('Location search unavailable:', error.message);
+      }
+      setApiAvailable(false);
+      setApiError(true);
       setSuggestions([]);
     } finally {
       setLoading(false);
@@ -177,6 +204,9 @@ const LocationSearch = ({ value, onChange, placeholder = "Search for specific ve
     // If user clears the field, clear the selected location
     if (!query) {
       onChange('');
+    } else {
+      // Always update the parent with the typed value (allows manual entry)
+      onChange(query);
     }
   };
 
@@ -291,9 +321,19 @@ const LocationSearch = ({ value, onChange, placeholder = "Search for specific ve
       )}
 
       {/* No results message */}
-      {showSuggestions && !loading && searchQuery.length >= 3 && suggestions.length === 0 && (
+      {showSuggestions && !loading && searchQuery.length >= 3 && suggestions.length === 0 && !apiError && (
         <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-4 text-sm text-gray-500">
-          No locations found. Try a different search term.
+          No locations found. Try a different search term or type your location manually.
+        </div>
+      )}
+
+      {/* API Error / Manual Entry Notice */}
+      {apiError && searchQuery.length >= 3 && (
+        <div className="absolute z-50 w-full mt-1 bg-yellow-50 border border-yellow-200 rounded-lg shadow-lg p-3 text-sm">
+          <p className="text-yellow-800 font-medium">Location suggestions unavailable</p>
+          <p className="text-yellow-700 text-xs mt-1">
+            You can still type your location manually (e.g., "Gordon College, Olongapo City, Zambales").
+          </p>
         </div>
       )}
     </div>
