@@ -39,7 +39,8 @@ const ForgotPassword = () => {
       const { data, error } = await auth.resetPassword(email);
       
       if (error) {
-        setError(error.message);
+        console.error('Password reset error:', error);
+        setError(error.message || 'Failed to send reset email. Please check your Supabase email configuration.');
         return;
       }
       
@@ -52,7 +53,8 @@ const ForgotPassword = () => {
       }, 3000);
       
     } catch (error) {
-      setError('Failed to send reset email. Please try again.');
+      console.error('Password reset exception:', error);
+      setError(error.message || 'Failed to send reset email. Please check your Supabase email configuration.');
     } finally {
       setIsLoading(false);
     }

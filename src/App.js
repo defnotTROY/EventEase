@@ -54,12 +54,21 @@ function AppContent() {
 
     // Listen for auth state changes
     const { data: { subscription } } = auth.onAuthStateChange((event, session) => {
+      // If user is on reset-password page with recovery tokens, don't redirect them
+      // They need to complete the password reset first
+      if (event === 'PASSWORD_RECOVERY' && location.pathname === '/reset-password') {
+        // Keep them on reset-password page, don't redirect
+        setUser(session?.user || null);
+        setIsLoading(false);
+        return;
+      }
+      
       setUser(session?.user || null);
       setIsLoading(false);
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [location.pathname]);
 
   // Show loading state while checking authentication
   if (isLoading) {
@@ -70,18 +79,24 @@ function AppContent() {
     );
   }
 
+  // Check if user is on reset-password with recovery session (don't show navbar/sidebar)
+  const isRecoverySession = user && location.pathname === '/reset-password' && 
+    (window.location.hash.includes('access_token') || window.location.hash.includes('type=recovery'));
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Only show navbar and sidebar for authenticated users on non-auth routes */}
-      {user && !isAuthRoute && !isLandingPage && (
+      {/* Don't show navbar/sidebar if user is in recovery session on reset-password */}
+      {user && !isAuthRoute && !isLandingPage && !isRecoverySession && (
         <>
           <Navbar onMenuClick={() => setSidebarOpen(true)} />
           <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         </>
       )}
       
-      <div className={user && !isAuthRoute && !isLandingPage ? "lg:ml-64" : ""}>
-        {isAuthRoute ? (
+      <div className={user && !isAuthRoute && !isLandingPage && !isRecoverySession ? "lg:ml-64" : ""}>
+        {/* Always show reset-password route, even if user is authenticated (recovery session) */}
+        {isAuthRoute || isRecoverySession ? (
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />

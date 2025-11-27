@@ -26,21 +26,89 @@ const ResetPassword = () => {
   });
 
   useEffect(() => {
+    let sessionEstablished = false;
+    
+    // Listen for auth state changes FIRST (Supabase auto-detects hash tokens)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event, { hasSession: !!session });
+      
+      if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
+        if (session) {
+          console.log('Session established via auth state change');
+          sessionEstablished = true;
+          setError('');
+          setLoading(false);
+          setSessionChecked(true);
+        }
+      }
+    });
+
     // Check if we have a recovery session from the URL hash
     const checkRecoverySession = async () => {
       try {
-        // Wait a bit for Supabase to process hash tokens
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Wait for Supabase to automatically process hash tokens
+        await new Promise(resolve => setTimeout(resolve, 1500));
         
-        // Check the URL hash for recovery tokens first
+        // Check both hash and query parameters
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        const accessToken = hashParams.get('access_token');
-        const refreshToken = hashParams.get('refresh_token');
-        const type = hashParams.get('type');
+        const queryParams = new URLSearchParams(window.location.search);
         
-        // If we have recovery tokens in the hash, set the session
-        if (accessToken && refreshToken && type === 'recovery') {
-          const { data: { session }, error: hashError } = await supabase.auth.setSession({
+        // First, check for errors in the URL (hash or query)
+        const error = hashParams.get('error') || queryParams.get('error');
+        const errorCode = hashParams.get('error_code') || queryParams.get('error_code');
+        const errorDescription = hashParams.get('error_description') || queryParams.get('error_description');
+        
+        if (error || errorCode) {
+          console.error('Error in URL:', { error, errorCode, errorDescription });
+          
+          let errorMessage = 'Invalid or expired reset link.';
+          
+          if (errorCode === 'otp_expired') {
+            errorMessage = 'This password reset link has expired. Please request a new password reset email.';
+          } else if (errorCode === 'access_denied') {
+            errorMessage = 'Access denied. The reset link may be invalid or expired.';
+          } else if (errorDescription) {
+            errorMessage = decodeURIComponent(errorDescription.replace(/\+/g, ' '));
+          }
+          
+          setError(errorMessage);
+          setLoading(false);
+          setSessionChecked(true);
+          
+          // Clear the error from URL
+          window.history.replaceState(null, '', window.location.pathname);
+          
+          return;
+        }
+        
+        // Get tokens from hash (preferred) or query params
+        const accessToken = hashParams.get('access_token') || queryParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token') || queryParams.get('refresh_token');
+        const type = hashParams.get('type') || queryParams.get('type');
+        
+        console.log('URL params:', { 
+          hasHash: window.location.hash.length > 0,
+          hasQuery: window.location.search.length > 0,
+          accessToken: !!accessToken, 
+          refreshToken: !!refreshToken, 
+          type 
+        });
+        
+        // Check if Supabase already established a session automatically
+        let { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (session) {
+          console.log('Session already exists');
+          setError('');
+          setLoading(false);
+          setSessionChecked(true);
+          return;
+        }
+        
+        // If we have recovery tokens in the URL, set the session manually
+        if (accessToken && refreshToken) {
+          console.log('Setting session from URL tokens...');
+          const { data: { session: newSession }, error: hashError } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken
           });
@@ -48,25 +116,30 @@ const ResetPassword = () => {
           if (hashError) {
             console.error('Session error:', hashError);
             setError('Invalid or expired reset link. Please request a new password reset.');
-            setTimeout(() => {
-              navigate('/forgot-password');
-            }, 3000);
+            setLoading(false);
+            setSessionChecked(true);
             return;
           }
           
-          if (session) {
-            // Valid session established - clear any error and show form
+          if (newSession) {
+            console.log('Session established successfully from tokens');
             setError('');
-          }
-        } else {
-          // Check if we already have a valid session
-          const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-          
-          if (!session && !accessToken) {
-            // No tokens or session found - show error but don't redirect immediately
-            setError('No valid reset link found. Please check your email and use the link provided.');
+            setLoading(false);
+            setSessionChecked(true);
+            // Clear tokens from URL
+            window.history.replaceState(null, '', window.location.pathname);
+            return;
           }
         }
+        
+        // If we get here and no session, but also no tokens, show helpful message
+        if (!accessToken && !refreshToken && !session) {
+          console.log('No tokens or session found');
+          // Don't show error immediately - let user try to use the form
+          // The form submission will handle the error
+          setError('');
+        }
+        
       } catch (err) {
         console.error('Error checking recovery session:', err);
         setError('Failed to validate reset link. Please try again or request a new reset email.');
@@ -77,6 +150,11 @@ const ResetPassword = () => {
     };
 
     checkRecoverySession();
+
+    // Cleanup subscription
+    return () => {
+      subscription?.unsubscribe();
+    };
   }, [navigate]);
 
   const handleInputChange = (field, value) => {
@@ -104,27 +182,46 @@ const ResetPassword = () => {
 
     try {
       // Check if we have a valid session first
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      let { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
-      if (sessionError || !session) {
-        // Try to recover session from hash if available
+      console.log('Form submission - checking session:', { hasSession: !!session, error: sessionError });
+      
+      // If no session, try to recover from URL tokens (hash or query)
+      if (!session) {
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        const accessToken = hashParams.get('access_token');
-        const refreshToken = hashParams.get('refresh_token');
+        const queryParams = new URLSearchParams(window.location.search);
+        
+        const accessToken = hashParams.get('access_token') || queryParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token') || queryParams.get('refresh_token');
         
         if (accessToken && refreshToken) {
-          const { error: setSessionError } = await supabase.auth.setSession({
+          console.log('Attempting to set session from URL tokens...');
+          const { data: { session: newSession }, error: setSessionError } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken
           });
           
           if (setSessionError) {
+            console.error('Failed to set session:', setSessionError);
             throw new Error('Invalid or expired reset link. Please request a new password reset.');
           }
-        } else {
-          throw new Error('No valid session found. Please request a new password reset.');
+          
+          if (newSession) {
+            session = newSession;
+            console.log('Session established from URL tokens');
+            // Clear tokens from URL
+            window.history.replaceState(null, '', window.location.pathname);
+          }
         }
       }
+      
+      // Final check - if still no session, throw error
+      if (!session) {
+        console.error('No valid session found after all attempts');
+        throw new Error('No valid session found. Please click the reset link from your email again, or request a new reset link if this one has expired.');
+      }
+
+      console.log('Updating password for session:', session.user?.email);
 
       // Update the password
       const { error: updateError } = await auth.updateUser({
@@ -132,6 +229,7 @@ const ResetPassword = () => {
       });
 
       if (updateError) {
+        console.error('Password update error:', updateError);
         throw updateError;
       }
 
@@ -207,11 +305,19 @@ const ResetPassword = () => {
           {/* Error Message */}
           {error && (
             <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
-              <div className="flex items-center">
-                <AlertCircle className="text-red-600 mr-3" size={20} />
-                <div>
-                  <p className="text-red-800 font-medium">Reset Failed</p>
-                  <p className="text-red-700 text-sm">{error}</p>
+              <div className="flex items-start">
+                <AlertCircle className="text-red-600 mr-3 flex-shrink-0 mt-0.5" size={20} />
+                <div className="flex-1">
+                  <p className="text-red-800 font-medium mb-1">Reset Failed</p>
+                  <p className="text-red-700 text-sm mb-3">{error}</p>
+                  {error.includes('expired') && (
+                    <button
+                      onClick={() => navigate('/forgot-password')}
+                      className="text-sm text-red-800 font-medium hover:text-red-900 underline"
+                    >
+                      Request a new reset link →
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -312,3 +418,4 @@ const ResetPassword = () => {
 };
 
 export default ResetPassword;
+
