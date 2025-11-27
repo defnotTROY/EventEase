@@ -61,7 +61,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { name: 'Create Event', href: '/create-event', icon: Plus, requires: 'organizer' },
     { name: 'Analytics', href: '/analytics', icon: BarChart3, requires: 'organizer' },
     { name: 'Participants', href: '/participants', icon: Users, requires: 'organizer' },
-    { name: 'QR Check-in', href: '/admin/qr-checkin', icon: QrCode, requires: 'organizer' },
+   
   ];
 
   // Admin-only navigation items

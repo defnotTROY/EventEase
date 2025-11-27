@@ -4,7 +4,6 @@ import {
   Users, 
   Calendar, 
   Activity,
-  Download,
   Filter,
   Eye,
   Sparkles,
@@ -195,10 +194,6 @@ const Analytics = () => {
           >
             <Filter size={18} className="mr-2 flex-shrink-0" />
             <span>Refresh</span>
-          </button>
-          <button className="btn-primary flex items-center text-sm sm:text-base">
-            <Download size={18} className="mr-2 flex-shrink-0" />
-            <span>Export Report</span>
           </button>
         </div>
       </div>

@@ -8,7 +8,6 @@ import {
   Shield, 
   TrendingUp,
   Activity,
-  AlertTriangle,
   CheckCircle,
   Clock,
   Loader2,
@@ -35,7 +34,6 @@ const AdminDashboard = () => {
     systemHealth: 'healthy'
   });
   const [recentActivity, setRecentActivity] = useState([]);
-  const [systemAlerts, setSystemAlerts] = useState([]);
 
   useEffect(() => {
     const checkAdminAccess = async () => {
@@ -106,12 +104,11 @@ const AdminDashboard = () => {
       }
 
       // Fetch real data from admin service
-      const [totalUsers, recentRegistrationsData, recentActivityData, systemHealthData, systemAlertsData] = await Promise.all([
+      const [totalUsers, recentRegistrationsData, recentActivityData, systemHealthData] = await Promise.all([
         adminService.getTotalUsers(),
         adminService.getRecentRegistrations(10),
         adminService.getRecentActivity(10),
-        adminService.getSystemHealth(),
-        adminService.getSystemAlerts()
+        adminService.getSystemHealth()
       ]);
 
       setStats({
@@ -142,21 +139,11 @@ const AdminDashboard = () => {
       });
 
       setRecentActivity(activityWithIcons);
-      setSystemAlerts(systemAlertsData);
 
     } catch (error) {
       console.error('Error loading dashboard data:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const getAlertColor = (severity) => {
-    switch (severity) {
-      case 'high': return 'text-red-600 bg-red-50 border-red-200';
-      case 'medium': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-      case 'low': return 'text-blue-600 bg-blue-50 border-blue-200';
-      default: return 'text-gray-600 bg-gray-50 border-gray-200';
     }
   };
 
@@ -297,8 +284,8 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        {/* Event Status Overview and System Alerts */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
+        {/* Event Status Overview */}
+        <div className="mb-6 sm:mb-8">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
             <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Event Status Overview</h3>
             <div className="space-y-3 sm:space-y-4">
@@ -325,32 +312,6 @@ const AdminDashboard = () => {
               </div>
             </div>
           </div>
-
-          {/* System Alerts */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
-            <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">System Alerts</h3>
-            <div className="space-y-2 sm:space-y-3">
-              {systemAlerts.length > 0 ? (
-                systemAlerts.map((alert) => (
-                  <div key={alert.id} className={`p-2 sm:p-3 rounded-lg border ${getAlertColor(alert.severity)}`}>
-                    <div className="flex items-start">
-                      <AlertTriangle className="h-3.5 w-3.5 sm:h-4 sm:w-4 mt-0.5 mr-2 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs sm:text-sm font-medium break-words">{alert.message}</p>
-                        <p className="text-[10px] sm:text-xs opacity-75">{alert.time}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-4">
-                  <CheckCircle className="h-6 w-6 sm:h-8 sm:w-8 text-green-500 mx-auto mb-2" />
-                  <p className="text-xs sm:text-sm text-gray-600">No alerts</p>
-                </div>
-              )}
-            </div>
-          </div>
-
         </div>
 
         {/* Recent Activity */}

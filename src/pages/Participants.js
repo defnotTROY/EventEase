@@ -7,13 +7,6 @@ import {
   Phone, 
   Calendar, 
   MapPin, 
-  Eye, 
-  Edit, 
-  Trash2,
-  Download,
-  Plus,
-  QrCode,
-  MessageSquare,
   Loader2
 } from 'lucide-react';
 import { eventsService } from '../services/eventsService';
@@ -175,24 +168,6 @@ const Participants = () => {
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Participants</h1>
           <p className="text-sm sm:text-base text-gray-600 mt-1">Manage and engage with event participants</p>
         </div>
-        <div className="flex flex-wrap gap-2 sm:gap-3">
-          <button 
-            onClick={loadParticipants}
-            className="btn-secondary flex items-center justify-center text-sm sm:text-base px-3 py-2 sm:px-4"
-            disabled={loading}
-          >
-            <Users size={18} className="sm:mr-2" />
-            <span className="hidden sm:inline">Refresh</span>
-          </button>
-          <button className="btn-secondary flex items-center justify-center text-sm sm:text-base px-3 py-2 sm:px-4">
-            <Download size={18} className="sm:mr-2" />
-            <span className="hidden sm:inline">Export List</span>
-          </button>
-          <button className="btn-primary flex items-center justify-center text-sm sm:text-base px-3 py-2 sm:px-4">
-            <Plus size={18} className="sm:mr-2" />
-            <span className="hidden sm:inline">Add Participant</span>
-          </button>
-        </div>
       </div>
 
       {/* Loading State */}
@@ -224,6 +199,47 @@ const Participants = () => {
       {/* Main Content */}
       {!loading && !error && (
         <>
+      {/* Participant Statistics */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6">
+        <div className="card text-center p-4 sm:p-6">
+          <div className="p-2 sm:p-3 bg-blue-100 rounded-full w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-2 sm:mb-4 flex items-center justify-center">
+            <Users className="text-blue-600" size={24} />
+          </div>
+          <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1 sm:mb-2">{participants?.length || 0}</h3>
+          <p className="text-xs sm:text-sm text-gray-600">Total</p>
+        </div>
+
+        <div className="card text-center p-4 sm:p-6">
+          <div className="p-2 sm:p-3 bg-green-100 rounded-full w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-2 sm:mb-4 flex items-center justify-center">
+            <Users className="text-green-600" size={24} />
+          </div>
+          <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1 sm:mb-2">
+            {(participants || []).filter(p => p.status === 'attended' || p.status === 'active').length}
+          </h3>
+          <p className="text-xs sm:text-sm text-gray-600">Attended</p>
+        </div>
+
+        <div className="card text-center p-4 sm:p-6">
+          <div className="p-2 sm:p-3 bg-blue-100 rounded-full w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-2 sm:mb-4 flex items-center justify-center">
+            <Users className="text-blue-600" size={24} />
+          </div>
+          <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1 sm:mb-2">
+            {(participants || []).filter(p => p.status === 'registered').length}
+          </h3>
+          <p className="text-xs sm:text-sm text-gray-600">Registered</p>
+        </div>
+
+        <div className="card text-center p-4 sm:p-6">
+          <div className="p-2 sm:p-3 bg-purple-100 rounded-full w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-2 sm:mb-4 flex items-center justify-center">
+            <Calendar className="text-purple-600" size={24} />
+          </div>
+          <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1 sm:mb-2">
+            {(participants || []).filter(p => p.events?.length > 1).length}
+          </h3>
+          <p className="text-xs sm:text-sm text-gray-600">Multi-Event</p>
+        </div>
+      </div>
+
       {/* Filters and Search */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
         <div className="flex flex-col gap-3 sm:gap-4">
@@ -285,7 +301,6 @@ const Participants = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Events</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Registration</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -326,25 +341,6 @@ const Participants = () => {
                       {participant.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex space-x-2">
-                      <button className="text-primary-600 hover:text-primary-900" title="View Details">
-                        <Eye size={16} />
-                      </button>
-                      <button className="text-green-600 hover:text-green-900" title="QR Check-in">
-                        <QrCode size={16} />
-                      </button>
-                      <button className="text-blue-600 hover:text-blue-900" title="Send Message">
-                        <MessageSquare size={16} />
-                      </button>
-                      <button className="text-gray-600 hover:text-gray-900" title="Edit">
-                        <Edit size={16} />
-                      </button>
-                      <button className="text-red-600 hover:text-red-900" title="Delete">
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </td>
                 </tr>
               ))}
             </tbody>
@@ -360,50 +356,8 @@ const Participants = () => {
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">No participants found</h3>
           <p className="text-gray-500 mb-6">Try adjusting your search or filter criteria</p>
-          <button className="btn-primary">Add Your First Participant</button>
         </div>
       )}
-
-      {/* Participant Statistics */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6">
-        <div className="card text-center p-4 sm:p-6">
-          <div className="p-2 sm:p-3 bg-blue-100 rounded-full w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-2 sm:mb-4 flex items-center justify-center">
-            <Users className="text-blue-600" size={24} />
-          </div>
-          <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1 sm:mb-2">{participants?.length || 0}</h3>
-          <p className="text-xs sm:text-sm text-gray-600">Total</p>
-        </div>
-
-        <div className="card text-center p-4 sm:p-6">
-          <div className="p-2 sm:p-3 bg-green-100 rounded-full w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-2 sm:mb-4 flex items-center justify-center">
-            <Users className="text-green-600" size={24} />
-          </div>
-          <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1 sm:mb-2">
-            {(participants || []).filter(p => p.status === 'attended' || p.status === 'active').length}
-          </h3>
-          <p className="text-xs sm:text-sm text-gray-600">Attended</p>
-        </div>
-
-        <div className="card text-center p-4 sm:p-6">
-          <div className="p-2 sm:p-3 bg-blue-100 rounded-full w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-2 sm:mb-4 flex items-center justify-center">
-            <Users className="text-blue-600" size={24} />
-          </div>
-          <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1 sm:mb-2">
-            {(participants || []).filter(p => p.status === 'registered').length}
-          </h3>
-          <p className="text-xs sm:text-sm text-gray-600">Registered</p>
-        </div>
-
-        <div className="card text-center p-4 sm:p-6">
-          <div className="p-2 sm:p-3 bg-purple-100 rounded-full w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-2 sm:mb-4 flex items-center justify-center">
-            <Calendar className="text-purple-600" size={24} />
-          </div>
-          <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1 sm:mb-2">
-            {(participants || []).filter(p => p.events?.length > 1).length}
-          </h3>
-          <p className="text-xs sm:text-sm text-gray-600">Multi-Event</p>
-        </div>
-      </div>
         </>
       )}
     </div>
