@@ -17,6 +17,48 @@ const EmailVerification = () => {
   const [lastChecked, setLastChecked] = useState(null);
   const pollingIntervalRef = useRef(null);
   const userIdRef = useRef(null);
+  const broadcastChannelRef = useRef(null);
+
+  // Set up cross-tab communication for verification status
+  useEffect(() => {
+    // Create a BroadcastChannel for cross-tab communication
+    if (typeof BroadcastChannel !== 'undefined') {
+      broadcastChannelRef.current = new BroadcastChannel('email-verification');
+      
+      // Listen for verification messages from other tabs
+      broadcastChannelRef.current.onmessage = (event) => {
+        if (event.data.type === 'email-verified') {
+          // Another tab verified the email, update this tab
+          setIsVerified(true);
+          stopPolling();
+          toast.success('Email verified in another tab! Redirecting to login...');
+          setTimeout(() => {
+            navigate('/login?verified=success');
+          }, 1500);
+        }
+      };
+    }
+
+    // Also listen to localStorage changes (fallback for browsers without BroadcastChannel)
+    const handleStorageChange = (e) => {
+      if (e.key === 'email-verified' && e.newValue === 'true') {
+        setIsVerified(true);
+        stopPolling();
+        toast.success('Email verified! Redirecting to login...');
+        setTimeout(() => {
+          navigate('/login?verified=success');
+        }, 1500);
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      if (broadcastChannelRef.current) {
+        broadcastChannelRef.current.close();
+      }
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [navigate, toast, stopPolling]);
 
   // Check if this is a callback from email verification link
   useEffect(() => {
@@ -51,12 +93,32 @@ const EmailVerification = () => {
             setIsVerified(true);
             setIsVerifying(false);
             
+            // Broadcast to other tabs that verification is complete
+            if (broadcastChannelRef.current) {
+              broadcastChannelRef.current.postMessage({ type: 'email-verified' });
+            }
+            // Also use localStorage as fallback
+            localStorage.setItem('email-verified', 'true');
+            setTimeout(() => localStorage.removeItem('email-verified'), 5000);
+            
             // Sign out the user (they'll need to log in)
             await auth.signOut();
+            
+            // Show message to close this tab if it was opened from email
+            const isFromEmail = window.opener === null && window.history.length <= 2;
             
             // Redirect to login with success message after a short delay
             setTimeout(() => {
               navigate('/login?verified=success');
+              // If opened from email, suggest closing this tab
+              if (isFromEmail) {
+                setTimeout(() => {
+                  if (window.opener) {
+                    // If there's an opener window, close this tab
+                    window.close();
+                  }
+                }, 3000);
+              }
             }, 2000);
           } else {
             // Token present but not verified yet, wait a bit and check again
@@ -65,6 +127,14 @@ const EmailVerification = () => {
               if (newSession?.user?.email_confirmed_at) {
                 setIsVerified(true);
                 setIsVerifying(false);
+                
+                // Broadcast to other tabs
+                if (broadcastChannelRef.current) {
+                  broadcastChannelRef.current.postMessage({ type: 'email-verified' });
+                }
+                localStorage.setItem('email-verified', 'true');
+                setTimeout(() => localStorage.removeItem('email-verified'), 5000);
+                
                 await auth.signOut();
                 setTimeout(() => {
                   navigate('/login?verified=success');
@@ -116,6 +186,13 @@ const EmailVerification = () => {
         setIsVerified(true);
         stopPolling();
         
+        // Broadcast to other tabs
+        if (broadcastChannelRef.current) {
+          broadcastChannelRef.current.postMessage({ type: 'email-verified' });
+        }
+        localStorage.setItem('email-verified', 'true');
+        setTimeout(() => localStorage.removeItem('email-verified'), 5000);
+        
         // Sign out and redirect to login
         await auth.signOut();
         if (showToast) {
@@ -132,6 +209,14 @@ const EmailVerification = () => {
       if (refreshData?.session?.user?.email_confirmed_at) {
         setIsVerified(true);
         stopPolling();
+        
+        // Broadcast to other tabs
+        if (broadcastChannelRef.current) {
+          broadcastChannelRef.current.postMessage({ type: 'email-verified' });
+        }
+        localStorage.setItem('email-verified', 'true');
+        setTimeout(() => localStorage.removeItem('email-verified'), 5000);
+        
         await auth.signOut();
         if (showToast) {
           toast.success('Email verified! Redirecting to login...');
@@ -235,6 +320,8 @@ const EmailVerification = () => {
   }
 
   if (isVerified) {
+    const isFromEmail = window.opener === null && window.history.length <= 2;
+    
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center px-3 sm:px-4">
         <div className="max-w-md w-full bg-white rounded-xl sm:rounded-2xl shadow-xl p-5 sm:p-8 text-center">
@@ -243,7 +330,14 @@ const EmailVerification = () => {
               <CheckCircle className="h-8 w-8 sm:h-10 sm:w-10 text-green-600" />
             </div>
             <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Email Verified!</h2>
-            <p className="text-sm sm:text-base text-gray-600">Your email has been successfully verified. Redirecting to login...</p>
+            <p className="text-sm sm:text-base text-gray-600 mb-4">
+              Your email has been successfully verified. Redirecting to login...
+            </p>
+            {isFromEmail && (
+              <p className="text-xs sm:text-sm text-gray-500 italic">
+                You can close this tab and return to the original page.
+              </p>
+            )}
           </div>
         </div>
       </div>

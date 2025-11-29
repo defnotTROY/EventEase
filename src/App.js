@@ -52,8 +52,8 @@ function AppContent() {
 
     getCurrentUser();
 
-    // Listen for auth state changes
-    const { data: { subscription } } = auth.onAuthStateChange((event, session) => {
+    // Listen for auth state changes (syncs across tabs via localStorage)
+    const { data: { subscription } } = auth.onAuthStateChange(async (event, session) => {
       // If user is on reset-password page with recovery tokens, don't redirect them
       // They need to complete the password reset first
       if (event === 'PASSWORD_RECOVERY' && location.pathname === '/reset-password') {
@@ -63,11 +63,47 @@ function AppContent() {
         return;
       }
       
+      // Check if email was just verified (SIGNED_IN event with email_confirmed_at)
+      if (event === 'SIGNED_IN' && session?.user?.email_confirmed_at) {
+        // If user is on verify-email page, they might want to stay there
+        // But update the user state anyway
+        setUser(session?.user || null);
+        setIsLoading(false);
+        return;
+      }
+      
       setUser(session?.user || null);
       setIsLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    // Also listen for cross-tab verification messages
+    let verificationChannel = null;
+    const handleStorageChange = (e) => {
+      if (e.key === 'email-verified' && e.newValue === 'true') {
+        // Refresh user session to get updated email_confirmed_at status
+        getCurrentUser();
+      }
+    };
+
+    if (typeof BroadcastChannel !== 'undefined') {
+      verificationChannel = new BroadcastChannel('email-verification');
+      verificationChannel.onmessage = (event) => {
+        if (event.data.type === 'email-verified') {
+          // Refresh user session to get updated email_confirmed_at status
+          getCurrentUser();
+        }
+      };
+    }
+    
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      subscription.unsubscribe();
+      if (verificationChannel) {
+        verificationChannel.close();
+      }
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, [location.pathname]);
 
   // Show loading state while checking authentication

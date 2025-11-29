@@ -221,7 +221,8 @@ const AdminQRCheckIn = () => {
         return isCheckedIn || hasCheckInTime;
       }).map(p => ({
         ...p,
-        checkInTime: p.checked_in_at || p.updated_at || new Date().toISOString()
+        checkInTime: p.checked_in_at || p.updated_at || new Date().toISOString(),
+        logoutTime: p.logout_time || null
       }));
 
       console.log('✅ Checked-in participants from DB:', checkedInFromDB.length);
@@ -310,9 +311,112 @@ const AdminQRCheckIn = () => {
                                 participant.status === 'checked-in' ||
                                 checkedInParticipants.some(p => p.id === participant.id);
       
+      // If already checked in, handle logout
       if (alreadyCheckedIn) {
-        toast.warning(`${participant.first_name || participant.email} is already checked in.`);
-        return; // Don't reload, just show warning
+        // Check if user has already logged out
+        if (participant.logout_time) {
+          toast.warning(`${participant.first_name || participant.email} has already logged out.`);
+          return;
+        }
+
+        // Get event start time to check if 1 hour has passed
+        if (!selectedEvent || !selectedEvent.date || !selectedEvent.time) {
+          toast.error('Event date and time information is missing. Cannot process logout.');
+          return;
+        }
+
+        // Parse event start time
+        const parseTime = (timeStr) => {
+          if (!timeStr) return null;
+          // Handle 24-hour format (HH:MM)
+          if (/^\d{1,2}:\d{2}$/.test(timeStr)) {
+            const [hours, minutes] = timeStr.split(':').map(Number);
+            return { hours, minutes };
+          }
+          // Handle 12-hour format (HH:MM AM/PM)
+          const ampmMatch = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+          if (ampmMatch) {
+            let hours = parseInt(ampmMatch[1]);
+            const minutes = parseInt(ampmMatch[2]);
+            const period = ampmMatch[3].toUpperCase();
+            if (period === 'PM' && hours !== 12) hours += 12;
+            if (period === 'AM' && hours === 12) hours = 0;
+            return { hours, minutes };
+          }
+          return null;
+        };
+
+        const eventDate = new Date(selectedEvent.date);
+        const timeData = parseTime(selectedEvent.time);
+        
+        if (!timeData) {
+          toast.error('Invalid event time format. Cannot process logout.');
+          return;
+        }
+
+        // Create event start datetime
+        const eventStartTime = new Date(eventDate);
+        eventStartTime.setHours(timeData.hours, timeData.minutes, 0, 0);
+
+        // Check if 1 hour has passed since event start
+        const now = new Date();
+        const oneHourInMs = 60 * 60 * 1000; // 1 hour in milliseconds
+        const timeSinceStart = now - eventStartTime;
+
+        if (timeSinceStart < oneHourInMs) {
+          const minutesRemaining = Math.ceil((oneHourInMs - timeSinceStart) / (60 * 1000));
+          toast.warning(`Cannot log out yet. Users can only log out 1 hour after event start. ${minutesRemaining} minute(s) remaining.`);
+          return;
+        }
+
+        // Proceed with logout
+        const logoutTime = new Date().toISOString();
+        const updateData = {
+          logout_time: logoutTime
+        };
+
+        console.log('🚪 Logging out participant:', participant.id, 'at', logoutTime);
+
+        // Update participant with logout time
+        const { error: logoutError } = await supabase
+          .from('participants')
+          .update(updateData)
+          .eq('id', participant.id);
+
+        if (logoutError) {
+          console.error('Logout error:', logoutError);
+          toast.error(`Failed to log out participant: ${logoutError.message || 'Unknown error'}`);
+          return;
+        }
+
+        // Update local state
+        const updatedParticipant = {
+          ...participant,
+          logout_time: logoutTime,
+          logoutTime: logoutTime
+        };
+
+        setAllParticipants(prev => 
+          prev.map(p => p.id === participant.id ? updatedParticipant : p)
+        );
+
+        setCheckedInParticipants(prev => 
+          prev.map(p => p.id === participant.id ? updatedParticipant : p)
+        );
+
+        const participantName = `${participant.first_name || ''} ${participant.last_name || ''}`.trim() || participant.email || 'Participant';
+        const logoutTimeFormatted = new Date(logoutTime).toLocaleString();
+        toast.success(`${participantName} logged out at ${logoutTimeFormatted}`);
+
+        // Close scanner
+        setScannerOpen(false);
+
+        // Reload participants after a short delay
+        setTimeout(async () => {
+          await loadAllParticipants();
+        }, 800);
+
+        return; // Exit early, logout is complete
       }
 
       // Update participant status directly using Supabase
@@ -655,13 +759,62 @@ const AdminQRCheckIn = () => {
       return;
     }
 
+    // Helper function to format date (MM/DD/YYYY)
+    const formatDate = (dateString) => {
+      if (!dateString) return '';
+      const date = new Date(dateString);
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const year = date.getFullYear();
+      return `${month}/${day}/${year}`;
+    };
+
+    // Helper function to format time (HH:MM:SS AM/PM)
+    const formatTime = (dateString) => {
+      if (!dateString) return '';
+      const date = new Date(dateString);
+      const hours = date.getHours();
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const seconds = String(date.getSeconds()).padStart(2, '0');
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      const displayHours = hours % 12 || 12;
+      return `${String(displayHours).padStart(2, '0')}:${minutes}:${seconds} ${ampm}`;
+    };
+
+    // Helper function to calculate duration between check-in and logout
+    const calculateDuration = (checkInTime, logoutTime) => {
+      if (!checkInTime) return '';
+      if (!logoutTime) return ''; // No logout time yet
+      
+      const checkIn = new Date(checkInTime);
+      const logout = new Date(logoutTime);
+      const diffMs = logout - checkIn;
+      
+      if (diffMs < 0) return ''; // Invalid (logout before check-in)
+      
+      const totalSeconds = Math.floor(diffMs / 1000);
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+      
+      // Format as HH:MM:SS or MM:SS if less than an hour
+      if (hours > 0) {
+        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+      } else {
+        return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+      }
+    };
+
     const csv = [
-      ['Name', 'Email', 'Phone', 'Check-in Time'].join(','),
+      ['Name', 'Email', 'Phone', 'Check-in Date', 'Check-in Time', 'Logout', 'Duration'].join(','),
       ...filteredParticipants.map(p => [
         `"${p.first_name || ''} ${p.last_name || ''}"`,
         p.email || '',
         p.phone || '',
-        new Date(p.checkInTime).toLocaleString()
+        formatDate(p.checkInTime),
+        formatTime(p.checkInTime),
+        p.logoutTime ? formatTime(p.logoutTime) : '', // Logout time (empty if not logged out)
+        calculateDuration(p.checkInTime, p.logoutTime) // Duration in HH:MM:SS format
       ].join(','))
     ].join('\n');
 
