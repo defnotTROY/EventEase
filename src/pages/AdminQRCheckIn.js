@@ -776,7 +776,20 @@ const AdminQRCheckIn = () => {
                   <div className="text-left">
                     <h3 className="font-semibold text-blue-900">{selectedEvent.title}</h3>
                     <p className="text-sm text-blue-700">
-                      {new Date(selectedEvent.date).toLocaleDateString()} {selectedEvent.time && `at ${selectedEvent.time}`}
+                      {new Date(selectedEvent.date).toLocaleDateString()} {selectedEvent.time && (() => {
+                        const formatTime = (timeStr) => {
+                          if (!timeStr) return '';
+                          if (timeStr.includes('AM') || timeStr.includes('PM')) return timeStr;
+                          const [hours, minutes] = timeStr.split(':');
+                          const hour = parseInt(hours);
+                          const ampm = hour >= 12 ? 'PM' : 'AM';
+                          const displayHour = hour % 12 || 12;
+                          return `${displayHour}:${minutes} ${ampm}`;
+                        };
+                        const startTime = formatTime(selectedEvent.time);
+                        const endTime = selectedEvent.end_time ? formatTime(selectedEvent.end_time) : null;
+                        return `at ${endTime ? `${startTime} - ${endTime}` : startTime}`;
+                      })()}
                     </p>
                     {selectedEvent.location && (
                       <p className="text-sm text-blue-700">{selectedEvent.location}</p>

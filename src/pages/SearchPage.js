@@ -240,7 +240,20 @@ const SearchPage = () => {
                           </div>
                           <div className="flex items-center">
                             <Clock className="h-4 w-4 mr-1" />
-                            {event.time || 'Time TBD'}
+                            {(() => {
+                              const formatTime = (timeStr) => {
+                                if (!timeStr) return 'Time TBD';
+                                if (timeStr.includes('AM') || timeStr.includes('PM')) return timeStr;
+                                const [hours, minutes] = timeStr.split(':');
+                                const hour = parseInt(hours);
+                                const ampm = hour >= 12 ? 'PM' : 'AM';
+                                const displayHour = hour % 12 || 12;
+                                return `${displayHour}:${minutes} ${ampm}`;
+                              };
+                              const startTime = formatTime(event.time);
+                              const endTime = event.end_time ? formatTime(event.end_time) : null;
+                              return endTime ? `${startTime} - ${endTime}` : startTime;
+                            })()}
                           </div>
                         </div>
                       </div>
@@ -292,7 +305,20 @@ const SearchPage = () => {
                           </div>
                           <div className="flex items-center">
                             <Clock className="h-4 w-4 mr-1" />
-                            {event.time || 'Time TBD'}
+                            {(() => {
+                              const formatTime = (timeStr) => {
+                                if (!timeStr) return 'Time TBD';
+                                if (timeStr.includes('AM') || timeStr.includes('PM')) return timeStr;
+                                const [hours, minutes] = timeStr.split(':');
+                                const hour = parseInt(hours);
+                                const ampm = hour >= 12 ? 'PM' : 'AM';
+                                const displayHour = hour % 12 || 12;
+                                return `${displayHour}:${minutes} ${ampm}`;
+                              };
+                              const startTime = formatTime(event.time);
+                              const endTime = event.end_time ? formatTime(event.end_time) : null;
+                              return endTime ? `${startTime} - ${endTime}` : startTime;
+                            })()}
                           </div>
                         </div>
                       </div>

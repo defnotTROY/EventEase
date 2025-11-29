@@ -160,7 +160,13 @@ const UserSchedule = ({ scheduleData: propScheduleData = null, user: propUser = 
                             {event.time && (
                               <div className="flex items-center text-xs sm:text-sm text-gray-600">
                                 <Clock className="h-3 w-3 sm:h-4 sm:w-4 mr-2 text-gray-400 flex-shrink-0" />
-                                <span className="break-words">{scheduleService.formatTime(event.time)}</span>
+                                <span className="break-words">
+                                  {(() => {
+                                    const startTime = scheduleService.formatTime(event.time);
+                                    const endTime = event.end_time ? scheduleService.formatTime(event.end_time) : null;
+                                    return endTime ? `${startTime} - ${endTime}` : startTime;
+                                  })()}
+                                </span>
                               </div>
                             )}
                             

@@ -35,6 +35,9 @@ const EventCreation = () => {
     timeHour: '09',
     timeMinute: '00',
     timePeriod: 'AM',
+    endTimeHour: '11',
+    endTimeMinute: '00',
+    endTimePeriod: 'AM',
     location: '',
     maxParticipants: '',
     category: '',
@@ -64,6 +67,13 @@ const EventCreation = () => {
   const [imageUploading, setImageUploading] = useState(false);
   const [isVerified, setIsVerified] = useState(null);
   const [showVerificationModal, setShowVerificationModal] = useState(false);
+
+  // Get tomorrow's date in YYYY-MM-DD format for minimum date
+  const getTomorrowDate = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().split('T')[0];
+  };
 
   const categories = [
     'Academic Conference',
@@ -213,6 +223,17 @@ const EventCreation = () => {
       return;
     }
 
+    // Validate date is not today or in the past
+    const selectedDate = new Date(formData.date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    selectedDate.setHours(0, 0, 0, 0);
+    
+    if (selectedDate <= today) {
+      setError('Event date must be tomorrow or later. You cannot schedule events for today or past dates.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -231,7 +252,7 @@ const EventCreation = () => {
         imageUrl = uploadData.publicUrl;
       }
 
-      // Convert AM/PM time to 24-hour format for database storage
+      // Convert AM/PM start time to 24-hour format for database storage
       let hour24 = parseInt(formData.timeHour, 10);
       if (formData.timePeriod === 'PM' && hour24 !== 12) {
         hour24 += 12;
@@ -240,6 +261,15 @@ const EventCreation = () => {
       }
       const formattedTime = `${hour24.toString().padStart(2, '0')}:${formData.timeMinute}`;
 
+      // Convert AM/PM end time to 24-hour format for database storage
+      let endHour24 = parseInt(formData.endTimeHour, 10);
+      if (formData.endTimePeriod === 'PM' && endHour24 !== 12) {
+        endHour24 += 12;
+      } else if (formData.endTimePeriod === 'AM' && endHour24 === 12) {
+        endHour24 = 0;
+      }
+      const formattedEndTime = `${endHour24.toString().padStart(2, '0')}:${formData.endTimeMinute}`;
+
       // Prepare event data for Supabase
       const eventData = {
         user_id: user.id,
@@ -247,6 +277,7 @@ const EventCreation = () => {
         description: formData.description,
         date: formData.date,
         time: formattedTime,
+        end_time: formattedEndTime,
         location: formData.location,
         max_participants: formData.maxParticipants ? parseInt(formData.maxParticipants) : null,
         category: formData.category,
@@ -324,23 +355,28 @@ const EventCreation = () => {
               />
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Date *
+              </label>
+              <input
+                type="date"
+                name="date"
+                value={formData.date}
+                onChange={handleInputChange}
+                min={getTomorrowDate()}
+                className="input-field w-full"
+                required
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                Events must be scheduled for tomorrow or later
+              </p>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Date *
-                </label>
-                <input
-                  type="date"
-                  name="date"
-                  value={formData.date}
-                  onChange={handleInputChange}
-                  className="input-field w-full"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Time *
+                  Start Time *
                 </label>
                 <div className="flex flex-wrap sm:flex-nowrap gap-2">
                   <select
@@ -369,6 +405,46 @@ const EventCreation = () => {
                   <select
                     name="timePeriod"
                     value={formData.timePeriod}
+                    onChange={handleInputChange}
+                    className="input-field flex-1 min-w-[60px] sm:w-20 sm:flex-initial"
+                    required
+                  >
+                    <option value="AM">AM</option>
+                    <option value="PM">PM</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  End Time *
+                </label>
+                <div className="flex flex-wrap sm:flex-nowrap gap-2">
+                  <select
+                    name="endTimeHour"
+                    value={formData.endTimeHour}
+                    onChange={handleInputChange}
+                    className="input-field flex-1 min-w-[60px] sm:w-20 sm:flex-initial"
+                    required
+                  >
+                    {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map(hour => (
+                      <option key={hour} value={hour}>{hour}</option>
+                    ))}
+                  </select>
+                  <span className="flex items-center text-gray-500 font-medium">:</span>
+                  <select
+                    name="endTimeMinute"
+                    value={formData.endTimeMinute}
+                    onChange={handleInputChange}
+                    className="input-field flex-1 min-w-[60px] sm:w-20 sm:flex-initial"
+                    required
+                  >
+                    {['00', '15', '30', '45'].map(minute => (
+                      <option key={minute} value={minute}>{minute}</option>
+                    ))}
+                  </select>
+                  <select
+                    name="endTimePeriod"
+                    value={formData.endTimePeriod}
                     onChange={handleInputChange}
                     className="input-field flex-1 min-w-[60px] sm:w-20 sm:flex-initial"
                     required
@@ -646,8 +722,12 @@ const EventCreation = () => {
                     <span className="text-gray-600">{formData.date || 'Not set'}</span>
                   </div>
                   <div className="flex flex-col sm:flex-row sm:items-center gap-1">
-                    <span className="font-medium text-gray-700">Time:</span>
+                    <span className="font-medium text-gray-700">Start Time:</span>
                     <span className="text-gray-600">{formData.timeHour}:{formData.timeMinute} {formData.timePeriod}</span>
+                  </div>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-1">
+                    <span className="font-medium text-gray-700">End Time:</span>
+                    <span className="text-gray-600">{formData.endTimeHour}:{formData.endTimeMinute} {formData.endTimePeriod}</span>
                   </div>
                   <div className="flex flex-col sm:flex-row sm:items-start gap-1">
                     <span className="font-medium text-gray-700">Location:</span>

@@ -32,6 +32,9 @@ const EventEdit = () => {
     timeHour: '09',
     timeMinute: '00',
     timePeriod: 'AM',
+    endTimeHour: '11',
+    endTimeMinute: '00',
+    endTimePeriod: 'AM',
     location: '',
     maxParticipants: '',
     category: '',
@@ -60,6 +63,31 @@ const EventEdit = () => {
   const [user, setUser] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [imageUploading, setImageUploading] = useState(false);
+  const [originalEventDate, setOriginalEventDate] = useState(null);
+
+  // Get tomorrow's date in YYYY-MM-DD format for minimum date
+  const getTomorrowDate = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().split('T')[0];
+  };
+
+  // Get minimum allowed date for editing
+  // If original event date is today or past, allow keeping it, otherwise require tomorrow
+  const getMinDate = () => {
+    if (!originalEventDate) return getTomorrowDate();
+    
+    const original = new Date(originalEventDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    original.setHours(0, 0, 0, 0);
+    
+    // If original date is today or past, allow it, otherwise require tomorrow
+    if (original <= today) {
+      return originalEventDate;
+    }
+    return getTomorrowDate();
+  };
 
   const categories = [
     'Academic Conference',
@@ -101,7 +129,7 @@ const EventEdit = () => {
           return;
         }
 
-        // Parse time into hour/minute/period
+        // Parse start time into hour/minute/period
         let timeHour = '09';
         let timeMinute = '00';
         let timePeriod = 'AM';
@@ -135,6 +163,43 @@ const EventEdit = () => {
           }
         }
 
+        // Parse end time into hour/minute/period
+        let endTimeHour = '11';
+        let endTimeMinute = '00';
+        let endTimePeriod = 'AM';
+        
+        if (event.end_time) {
+          // Handle formats like "09:00 AM", "14:00", "2:30 PM"
+          const timeStr = event.end_time.trim();
+          const ampmMatch = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+          const militaryMatch = timeStr.match(/^(\d{1,2}):(\d{2})$/);
+          
+          if (ampmMatch) {
+            endTimeHour = ampmMatch[1].padStart(2, '0');
+            endTimeMinute = ampmMatch[2];
+            endTimePeriod = ampmMatch[3].toUpperCase();
+          } else if (militaryMatch) {
+            let hour = parseInt(militaryMatch[1], 10);
+            endTimeMinute = militaryMatch[2];
+            if (hour === 0) {
+              endTimeHour = '12';
+              endTimePeriod = 'AM';
+            } else if (hour < 12) {
+              endTimeHour = hour.toString().padStart(2, '0');
+              endTimePeriod = 'AM';
+            } else if (hour === 12) {
+              endTimeHour = '12';
+              endTimePeriod = 'PM';
+            } else {
+              endTimeHour = (hour - 12).toString().padStart(2, '0');
+              endTimePeriod = 'PM';
+            }
+          }
+        }
+
+        // Store original event date for validation
+        setOriginalEventDate(event.date || '');
+
         // Populate form with existing data
         setFormData({
           title: event.title || '',
@@ -143,6 +208,9 @@ const EventEdit = () => {
           timeHour,
           timeMinute,
           timePeriod,
+          endTimeHour,
+          endTimeMinute,
+          endTimePeriod,
           location: event.location || '',
           maxParticipants: event.max_participants || '',
           category: event.category || '',
@@ -229,7 +297,24 @@ const EventEdit = () => {
         return;
       }
 
-      // Convert AM/PM time to 24-hour format for database storage
+      // Validate date is not in the past (unless it's the original date)
+      const selectedDate = new Date(formData.date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      selectedDate.setHours(0, 0, 0, 0);
+      
+      const isOriginalDate = originalEventDate && formData.date === originalEventDate;
+      const originalDate = originalEventDate ? new Date(originalEventDate) : null;
+      if (originalDate) originalDate.setHours(0, 0, 0, 0);
+      
+      // If changing the date, it must be tomorrow or later
+      // If keeping the original date, allow it even if it's today or past
+      if (!isOriginalDate && selectedDate <= today) {
+        setError('Event date must be tomorrow or later. You cannot schedule events for today or past dates.');
+        return;
+      }
+
+      // Convert AM/PM start time to 24-hour format for database storage
       let hour24 = parseInt(formData.timeHour, 10);
       if (formData.timePeriod === 'PM' && hour24 !== 12) {
         hour24 += 12;
@@ -238,12 +323,22 @@ const EventEdit = () => {
       }
       const formattedTime = `${hour24.toString().padStart(2, '0')}:${formData.timeMinute}`;
 
+      // Convert AM/PM end time to 24-hour format for database storage
+      let endHour24 = parseInt(formData.endTimeHour, 10);
+      if (formData.endTimePeriod === 'PM' && endHour24 !== 12) {
+        endHour24 += 12;
+      } else if (formData.endTimePeriod === 'AM' && endHour24 === 12) {
+        endHour24 = 0;
+      }
+      const formattedEndTime = `${endHour24.toString().padStart(2, '0')}:${formData.endTimeMinute}`;
+
       // Prepare event data
       const eventData = {
         title: formData.title,
         description: formData.description,
         date: formData.date,
         time: formattedTime,
+        end_time: formattedEndTime,
         location: formData.location,
         max_participants: parseInt(formData.maxParticipants) || null,
         category: formData.category,
@@ -446,14 +541,28 @@ const EventEdit = () => {
                   name="date"
                   value={formData.date}
                   onChange={handleInputChange}
+                  min={getMinDate()}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 />
+                <p className="mt-1 text-xs text-gray-500">
+                  {originalEventDate && (() => {
+                    const original = new Date(originalEventDate);
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    original.setHours(0, 0, 0, 0);
+                    if (original <= today) {
+                      return 'You can keep the existing date, but cannot change to a past date';
+                    }
+                    return 'Date must be tomorrow or later';
+                  })()}
+                  {!originalEventDate && 'Date must be tomorrow or later'}
+                </p>
               </div>
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <Clock className="inline mr-1" size={16} />
-                  Time
+                  Start Time
                 </label>
                 <div className="flex flex-wrap sm:flex-nowrap gap-2">
                   <select
@@ -480,6 +589,45 @@ const EventEdit = () => {
                   <select
                     name="timePeriod"
                     value={formData.timePeriod}
+                    onChange={handleInputChange}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent flex-1 min-w-[60px] sm:w-20 sm:flex-initial"
+                  >
+                    <option value="AM">AM</option>
+                    <option value="PM">PM</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Clock className="inline mr-1" size={16} />
+                  End Time
+                </label>
+                <div className="flex flex-wrap sm:flex-nowrap gap-2">
+                  <select
+                    name="endTimeHour"
+                    value={formData.endTimeHour}
+                    onChange={handleInputChange}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent flex-1 min-w-[60px] sm:w-20 sm:flex-initial"
+                  >
+                    {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map(hour => (
+                      <option key={hour} value={hour}>{hour}</option>
+                    ))}
+                  </select>
+                  <span className="flex items-center text-gray-500 font-medium">:</span>
+                  <select
+                    name="endTimeMinute"
+                    value={formData.endTimeMinute}
+                    onChange={handleInputChange}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent flex-1 min-w-[60px] sm:w-20 sm:flex-initial"
+                  >
+                    {['00', '15', '30', '45'].map(minute => (
+                      <option key={minute} value={minute}>{minute}</option>
+                    ))}
+                  </select>
+                  <select
+                    name="endTimePeriod"
+                    value={formData.endTimePeriod}
                     onChange={handleInputChange}
                     className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent flex-1 min-w-[60px] sm:w-20 sm:flex-initial"
                   >

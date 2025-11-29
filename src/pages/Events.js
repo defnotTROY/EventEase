@@ -189,10 +189,28 @@ const Events = () => {
     });
   };
 
-  // Format time for display
+  // Format time for display (convert 24-hour to 12-hour if needed)
   const formatTime = (timeString) => {
     if (!timeString) return 'TBD';
-    return timeString;
+    // If already in readable format, return as is
+    if (timeString.includes('AM') || timeString.includes('PM')) {
+      return timeString;
+    }
+    // Convert 24-hour to 12-hour format
+    const [hours, minutes] = timeString.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${minutes} ${ampm}`;
+  };
+
+  // Format time range (start - end)
+  const formatTimeRange = (startTime, endTime) => {
+    if (!startTime) return 'TBD';
+    const start = formatTime(startTime);
+    if (!endTime) return start;
+    const end = formatTime(endTime);
+    return `${start} - ${end}`;
   };
 
   const filteredEvents = events.filter(event => {
@@ -378,7 +396,7 @@ const Events = () => {
                 <div className="space-y-1.5 sm:space-y-2 mb-3 sm:mb-4">
                   <div className="flex items-center text-xs sm:text-sm text-gray-500">
                     <Calendar size={14} className="mr-2 flex-shrink-0" />
-                    <span className="truncate">{formatDate(event.date)} • {formatTime(event.time)}</span>
+                    <span className="truncate">{formatDate(event.date)} • {formatTimeRange(event.time, event.end_time)}</span>
                   </div>
                   <div className="flex items-center text-xs sm:text-sm text-gray-500">
                     <MapPin size={14} className="mr-2 flex-shrink-0" />
@@ -482,7 +500,7 @@ const Events = () => {
                           <div className="flex flex-wrap gap-3 text-sm text-gray-500">
                             <span className="inline-flex items-center gap-1">
                               <Calendar size={14} />
-                              {formatDate(event.date)} • {formatTime(event.time)}
+                              {formatDate(event.date)} • {formatTimeRange(event.time, event.end_time)}
                             </span>
                             <span className="inline-flex items-center gap-1">
                               <MapPin size={14} />
@@ -598,7 +616,7 @@ const Events = () => {
                         <p className="text-xs sm:text-sm font-semibold text-gray-800">
                           {formatDate(selectedEvent.date)}
                         </p>
-                        <p className="text-xs sm:text-sm text-gray-600">{formatTime(selectedEvent.time)}</p>
+                        <p className="text-xs sm:text-sm text-gray-600">{formatTimeRange(selectedEvent.time, selectedEvent.end_time)}</p>
                       </div>
                     </div>
                     <div className="flex items-start gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg">

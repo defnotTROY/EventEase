@@ -653,7 +653,24 @@ const EventView = () => {
                     <Clock className="w-5 h-5 text-gray-400" />
                     <div>
                       <p className="text-sm font-medium text-gray-700">Time</p>
-                      <p className="text-gray-600">{event.time}</p>
+                      <p className="text-gray-600">
+                        {(() => {
+                          // Format time for display (convert 24-hour to 12-hour if needed)
+                          const formatTime = (timeStr) => {
+                            if (!timeStr) return '';
+                            if (timeStr.includes('AM') || timeStr.includes('PM')) return timeStr;
+                            const [hours, minutes] = timeStr.split(':');
+                            const hour = parseInt(hours);
+                            const ampm = hour >= 12 ? 'PM' : 'AM';
+                            const displayHour = hour % 12 || 12;
+                            return `${displayHour}:${minutes} ${ampm}`;
+                          };
+                          
+                          const startTime = formatTime(event.time);
+                          const endTime = event.end_time ? formatTime(event.end_time) : null;
+                          return endTime ? `${startTime} - ${endTime}` : startTime;
+                        })()}
+                      </p>
                     </div>
                   </div>
                 )}

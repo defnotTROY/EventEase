@@ -16,7 +16,7 @@ class ConflictDetectionService {
       // Get the event details we're trying to register for
       const { data: targetEvent, error: eventError } = await supabase
         .from('events')
-        .select('id, title, date, time')
+        .select('id, title, date, time, end_time')
         .eq('id', eventId)
         .single();
 
@@ -44,7 +44,7 @@ class ConflictDetectionService {
         .select(`
           event_id,
           status,
-          events!inner(id, title, date, time, status)
+          events!inner(id, title, date, time, end_time, status)
         `)
         .eq('user_id', userId)
         .neq('event_id', eventId); // Exclude the current event
@@ -103,8 +103,35 @@ class ConflictDetectionService {
         return null;
       };
 
+      // Helper function to convert time string to minutes since midnight for comparison
+      const timeToMinutes = (timeString) => {
+        const normalized = normalizeTime(timeString);
+        if (!normalized) return null;
+        const [hours, minutes] = normalized.split(':').map(Number);
+        return hours * 60 + minutes;
+      };
+
+      // Get target event time range
       const targetDate = targetEvent.date;
-      const targetTime = normalizeTime(targetEvent.time);
+      const targetStartMinutes = timeToMinutes(targetEvent.time);
+      let targetEndMinutes = targetEvent.end_time 
+        ? timeToMinutes(targetEvent.end_time)
+        : targetStartMinutes + 120; // Default 2 hours if no end time
+      
+      // Handle case where end time is 00:00 (midnight) or less than start time
+      // This means the event ends at midnight (whole day event)
+      if (targetEvent.end_time && (targetEndMinutes === 0 || targetEndMinutes <= targetStartMinutes)) {
+        targetEndMinutes = 1440; // End of day (24:00 = 1440 minutes)
+      }
+
+      if (targetStartMinutes === null) {
+        // Can't check conflicts without a valid start time
+        return {
+          hasConflict: false,
+          conflictingEvent: null,
+          error: null
+        };
+      }
 
       // Check each registered event for conflicts
       for (const registration of userRegistrations) {
@@ -112,17 +139,39 @@ class ConflictDetectionService {
         if (!event || !event.date || !event.time) continue;
 
         const eventDate = event.date;
-        const eventTime = normalizeTime(event.time);
+        
+        // Only check events on the same date
+        if (eventDate !== targetDate) continue;
 
-        // Check if same date AND same time
-        if (eventDate === targetDate && eventTime === targetTime) {
+        const eventStartMinutes = timeToMinutes(event.time);
+        let eventEndMinutes = event.end_time 
+          ? timeToMinutes(event.end_time)
+          : eventStartMinutes + 120; // Default 2 hours if no end time
+
+        if (eventStartMinutes === null) continue;
+
+        // Handle case where end time is 00:00 (midnight) or less than start time
+        // This means the event ends at midnight (whole day event)
+        if (event.end_time && (eventEndMinutes === 0 || eventEndMinutes <= eventStartMinutes)) {
+          eventEndMinutes = 1440; // End of day (24:00 = 1440 minutes)
+        }
+
+        // Check if time ranges overlap
+        // Two time ranges overlap if:
+        // - targetStart < eventEnd AND targetEnd > eventStart
+        const timeRangesOverlap = 
+          targetStartMinutes < eventEndMinutes && 
+          targetEndMinutes > eventStartMinutes;
+
+        if (timeRangesOverlap) {
           return {
             hasConflict: true,
             conflictingEvent: {
               id: event.id,
               title: event.title,
               date: event.date,
-              time: event.time
+              time: event.time,
+              end_time: event.end_time
             },
             error: null
           };
@@ -171,7 +220,22 @@ class ConflictDetectionService {
       day: 'numeric'
     });
 
-    return `You are already registered for "${conflictingEvent.title}" on ${eventDate} at ${conflictingEvent.time}. You cannot register for multiple events at the same date and time.`;
+    // Format time range for display
+    const formatTime = (timeStr) => {
+      if (!timeStr) return '';
+      if (timeStr.includes('AM') || timeStr.includes('PM')) return timeStr;
+      const [hours, minutes] = timeStr.split(':');
+      const hour = parseInt(hours);
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      const displayHour = hour % 12 || 12;
+      return `${displayHour}:${minutes} ${ampm}`;
+    };
+
+    const startTime = formatTime(conflictingEvent.time);
+    const endTime = conflictingEvent.end_time ? formatTime(conflictingEvent.end_time) : null;
+    const timeRange = endTime ? `${startTime} - ${endTime}` : startTime;
+
+    return `You are already registered for "${conflictingEvent.title}" on ${eventDate} from ${timeRange}. You cannot register for overlapping events.`;
   }
 }
 
