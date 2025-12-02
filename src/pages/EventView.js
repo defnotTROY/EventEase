@@ -167,6 +167,21 @@ const EventView = () => {
   const handleRegistrationSubmit = async (e) => {
     e.preventDefault();
     
+    // Check if event is completed or cancelled
+    if (event && (event.status === 'completed' || event.status === 'cancelled')) {
+      setShowRegistrationForm(false);
+      if (event.status === 'completed') {
+        toast.error('Cannot register. This event has already been completed.', {
+          title: 'Registration Closed'
+        });
+      } else {
+        toast.error('Cannot register. This event has been cancelled.', {
+          title: 'Registration Closed'
+        });
+      }
+      return;
+    }
+    
     if (!registrationData.firstName || !registrationData.lastName || !registrationData.email) {
         toast.warning('Please complete all required fields before submitting.');
       return;
@@ -220,6 +235,20 @@ const EventView = () => {
 
     if (isOrganizerUser) {
       toast.info('Event organizers cannot register for events. As an organizer, you create and manage events rather than participate as an attendee.');
+      return;
+    }
+
+    // Check if event is completed or cancelled
+    if (event && (event.status === 'completed' || event.status === 'cancelled')) {
+      if (event.status === 'completed') {
+        toast.warning('Registration is closed. This event has already been completed.', {
+          title: 'Event Completed'
+        });
+      } else {
+        toast.warning('Registration is closed. This event has been cancelled.', {
+          title: 'Event Cancelled'
+        });
+      }
       return;
     }
 
@@ -800,15 +829,18 @@ const EventView = () => {
                 </div>
               </div>
               
-              {(isAdmin || isOrganizerUser) ? (
+              {isOrganizerUser ? (
                 <div className="w-full mt-4 px-4 py-2 rounded-lg font-medium bg-gray-400 text-white cursor-not-allowed flex items-center justify-center">
                   <UserPlus size={16} className="mr-2" />
-                  {isAdmin ? 'Admins Cannot Register' : 'Organizers Cannot Register'}
+                  Organizers Cannot Register
                 </div>
-              ) : (
+              ) : !isAdmin && currentStatus !== 'completed' && currentStatus !== 'cancelled' ? (
                 <button 
                   onClick={handleRegisterClick}
-                  disabled={isRegistered || (event.max_participants && participantCount >= event.max_participants)}
+                  disabled={
+                    isRegistered || 
+                    (event.max_participants && participantCount >= event.max_participants)
+                  }
                   className={`w-full mt-4 px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center ${
                     isRegistered 
                       ? 'bg-green-600 text-white cursor-not-allowed' 
@@ -825,7 +857,7 @@ const EventView = () => {
                     : 'Register for Event'
                   }
                 </button>
-              )}
+              ) : null}
             </div>
           </div>
         </div>

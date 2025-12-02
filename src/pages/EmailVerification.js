@@ -19,6 +19,14 @@ const EmailVerification = () => {
   const userIdRef = useRef(null);
   const broadcastChannelRef = useRef(null);
 
+  // Stop polling (defined early so it's available to effects)
+  const stopPolling = useCallback(() => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+  }, []);
+
   // Set up cross-tab communication for verification status
   useEffect(() => {
     // Create a BroadcastChannel for cross-tab communication
@@ -251,14 +259,6 @@ const EmailVerification = () => {
       checkVerificationStatus(false); // Don't show toast for automatic checks
     }, 5000); // Check every 5 seconds
   }, [checkVerificationStatus]);
-
-  // Stop polling
-  const stopPolling = useCallback(() => {
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current);
-      pollingIntervalRef.current = null;
-    }
-  }, []);
 
   // Cleanup polling on unmount
   useEffect(() => {

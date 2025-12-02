@@ -48,6 +48,14 @@ const AdminQRCheckIn = () => {
   const [sortBy, setSortBy] = useState('time'); // time, name, email
   const [sortOrder, setSortOrder] = useState('desc'); // asc, desc
   const [showParticipantDetails, setShowParticipantDetails] = useState(false); // Show/hide participant details
+  const [showManualCheckInModal, setShowManualCheckInModal] = useState(false);
+  const [manualCheckInData, setManualCheckInData] = useState({
+    email: '',
+    firstName: '',
+    lastName: '',
+    phone: ''
+  });
+  const [manualCheckInSubmitting, setManualCheckInSubmitting] = useState(false);
   const lastLoadedEventIdRef = useRef(null); // Track which event we've loaded to prevent unnecessary reloads
 
   // Helper function to check if an event is checkable (today or ongoing only)
@@ -104,7 +112,9 @@ const AdminQRCheckIn = () => {
       setEvents(checkableEvents);
     } catch (error) {
       console.error('Error loading events:', error);
-      toast.error('Failed to load events. Please try again.');
+      toast.error('Failed to load events. Please try again.', {
+        title: 'Loading Error'
+      });
     }
   }, [user, toast, isEventCheckable]);
 
@@ -195,7 +205,9 @@ const AdminQRCheckIn = () => {
         console.log('📋 All participant user_ids:', participants.map(p => p.user_id));
       } else {
         console.warn('⚠️ No participants found for this event!');
-        toast.warning('No participants found for this event. Make sure users have registered.');
+        toast.warning('No participants found for this event. Make sure users have registered.', {
+          title: 'No Participants'
+        });
       }
 
       // Store all participants
@@ -244,7 +256,9 @@ const AdminQRCheckIn = () => {
       }
     } catch (error) {
       console.error('❌ Error loading participants:', error);
-      toast.error(`Failed to load participants list: ${error.message || 'Unknown error'}`);
+      toast.error(`Failed to load participants list: ${error.message || 'Unknown error'}`, {
+        title: 'Loading Error'
+      });
       setAllParticipants([]);
       setCheckedInParticipants([]);
     }
@@ -257,12 +271,16 @@ const AdminQRCheckIn = () => {
 
   const handleQRScan = async (qrData) => {
     if (!qrData || qrData.type !== 'user_profile') {
-      toast.error('Invalid QR code detected. Please scan a valid user QR code.');
+      toast.error('Invalid QR code detected. Please scan a valid user QR code.', {
+        title: 'Invalid QR Code'
+      });
       return;
     }
 
     if (!selectedEventId) {
-      toast.warning('Please select an event before scanning a QR code.');
+      toast.warning('Please select an event before scanning a QR code.', {
+        title: 'No Event Selected'
+      });
       setScannerOpen(false);
       return;
     }
@@ -302,7 +320,9 @@ const AdminQRCheckIn = () => {
           email: p.email,
           name: `${p.first_name} ${p.last_name}`
         })));
-        toast.error(`${qrData.email || 'This user'} is not registered for this event.`);
+        toast.error(`${qrData.email || 'This user'} is not registered for this event.`, {
+          title: 'Registration Not Found'
+        });
         return;
       }
 
@@ -565,7 +585,9 @@ const AdminQRCheckIn = () => {
       // Show success message with participant name and timestamp
       const participantName = `${participant.first_name || ''} ${participant.last_name || ''}`.trim() || participant.email || 'Participant';
       const checkInTimeFormatted = new Date(checkInTime).toLocaleString();
-      toast.success(`${participantName} checked in at ${checkInTimeFormatted}`);
+        toast.success(`${participantName} checked in at ${checkInTimeFormatted}`, {
+          title: 'Check-in Successful'
+        });
 
       // Close the scanner modal after successful check-in
       setScannerOpen(false);
@@ -579,19 +601,45 @@ const AdminQRCheckIn = () => {
     } catch (error) {
       console.error('Error checking in participant:', error);
       const errorMessage = error.message || 'An unexpected error occurred. Please try again.';
-      toast.error(`Unable to check in participant: ${errorMessage}`);
+      toast.error(`Unable to check in participant: ${errorMessage}`, {
+        title: 'Check-in Failed'
+      });
     }
   };
 
-  const handleManualCheckIn = async () => {
-    const email = prompt('Enter user email to check in:');
-    if (!email) return;
+  const handleManualCheckIn = () => {
+    // Reset form and open modal
+    setManualCheckInData({
+      email: '',
+      firstName: '',
+      lastName: '',
+      phone: ''
+    });
+    setShowManualCheckInModal(true);
+  };
 
-    const firstName = prompt('Enter first name (optional):') || 'User';
-    const lastName = prompt('Enter last name (optional):') || '';
-    const phone = prompt('Enter phone number (optional):') || '';
+  const handleManualCheckInSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!manualCheckInData.email || !manualCheckInData.email.trim()) {
+      toast.error('Please enter an email address.');
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(manualCheckInData.email.trim())) {
+      toast.error('Please enter a valid email address.');
+      return;
+    }
+
+    setManualCheckInSubmitting(true);
 
     try {
+      const email = manualCheckInData.email.trim();
+      const firstName = manualCheckInData.firstName.trim() || 'User';
+      const lastName = manualCheckInData.lastName.trim() || '';
+      const phone = manualCheckInData.phone.trim() || '';
       // Find participant by email in this event
       const { data: participants, error: fetchError } = await eventsService.getEventParticipantsDetails(selectedEventId);
       
@@ -669,15 +717,34 @@ const AdminQRCheckIn = () => {
         return [updatedParticipant, ...filtered];
       });
 
-      toast.success(`${email} has been successfully checked in.`);
+      const participantName = firstName && lastName ? `${firstName} ${lastName}` : email;
+      toast.success(`${participantName} has been successfully checked in.`, {
+        title: 'Check-in Successful'
+      });
+      
+      // Close modal and reset form
+      setShowManualCheckInModal(false);
+      setManualCheckInData({
+        email: '',
+        firstName: '',
+        lastName: '',
+        phone: ''
+      });
     } catch (error) {
       console.error('Error manually checking in:', error);
-      toast.error(`Unable to complete check-in: ${error.message || 'An unexpected error occurred. Please try again.'}`);
+      toast.error(`Unable to complete check-in: ${error.message || 'An unexpected error occurred. Please try again.'}`, {
+        title: 'Check-in Failed'
+      });
+    } finally {
+      setManualCheckInSubmitting(false);
     }
   };
 
   const handleRemoveCheckIn = async (participantId, participantEmail) => {
-    if (!window.confirm(`Are you sure you want to remove the check-in for ${participantEmail}? This action cannot be undone.`)) return;
+    const confirmed = window.confirm(
+      `Are you sure you want to remove the check-in for ${participantEmail}?\n\nThis action cannot be undone.`
+    );
+    if (!confirmed) return;
 
     try {
       // Use updateParticipantStatusById since we have the participant ID
@@ -698,10 +765,14 @@ const AdminQRCheckIn = () => {
         )
       );
 
-      toast.success(`Check-in removed for ${participantEmail}.`);
+      toast.success(`Check-in removed for ${participantEmail}.`, {
+        title: 'Check-in Removed'
+      });
     } catch (error) {
       console.error('Error removing check-in:', error);
-      toast.error(`Unable to remove check-in: ${error.message || 'An unexpected error occurred. Please try again.'}`);
+      toast.error(`Unable to remove check-in: ${error.message || 'An unexpected error occurred. Please try again.'}`, {
+        title: 'Removal Failed'
+      });
     }
   };
 
@@ -755,7 +826,9 @@ const AdminQRCheckIn = () => {
 
   const exportCheckInList = () => {
     if (filteredParticipants.length === 0) {
-      toast.warning('No checked-in participants available to export.');
+      toast.warning('No checked-in participants available to export.', {
+        title: 'Nothing to Export'
+      });
       return;
     }
 
@@ -1037,23 +1110,23 @@ const AdminQRCheckIn = () => {
             <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-3">
               <button
                 onClick={() => setScannerOpen(true)}
-                className="flex items-center justify-center px-3 sm:px-6 py-2 sm:py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium text-xs sm:text-base"
+                className="flex items-center justify-center px-3 sm:px-6 py-2 sm:py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 active:bg-primary-800 font-medium text-xs sm:text-base transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-sm"
                 disabled={!selectedEventId}
               >
                 <Camera size={16} className="mr-1.5 sm:mr-2 flex-shrink-0" />
-                <span className="truncate">Scan QR</span>
+                <span className="truncate">Scan QR Code</span>
               </button>
               <button
                 onClick={handleManualCheckIn}
-                className="flex items-center justify-center px-3 sm:px-6 py-2 sm:py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-xs sm:text-base"
+                className="flex items-center justify-center px-3 sm:px-6 py-2 sm:py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 active:bg-blue-800 font-medium text-xs sm:text-base transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-sm"
                 disabled={!selectedEventId}
               >
                 <User size={16} className="mr-1.5 sm:mr-2 flex-shrink-0" />
-                <span className="truncate">Manual</span>
+                <span className="truncate">Manual Check-in</span>
               </button>
               <button
                 onClick={loadCheckedInParticipants}
-                className="flex items-center justify-center px-3 sm:px-6 py-2 sm:py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 font-medium text-xs sm:text-base"
+                className="flex items-center justify-center px-3 sm:px-6 py-2 sm:py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 active:bg-gray-800 font-medium text-xs sm:text-base transition-all duration-200 shadow-sm hover:shadow-md"
               >
                 <RefreshCw size={16} className="mr-1.5 sm:mr-2 flex-shrink-0" />
                 <span className="truncate">Refresh</span>
@@ -1061,10 +1134,10 @@ const AdminQRCheckIn = () => {
               {filteredParticipants.length > 0 && (
                 <button
                   onClick={exportCheckInList}
-                  className="flex items-center justify-center px-3 sm:px-6 py-2 sm:py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium text-xs sm:text-base"
+                  className="flex items-center justify-center px-3 sm:px-6 py-2 sm:py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 active:bg-green-800 font-medium text-xs sm:text-base transition-all duration-200 shadow-sm hover:shadow-md"
                 >
                   <Download size={16} className="mr-1.5 sm:mr-2 flex-shrink-0" />
-                  <span className="truncate">Export</span>
+                  <span className="truncate">Export CSV</span>
                 </button>
               )}
             </div>
@@ -1252,10 +1325,138 @@ const AdminQRCheckIn = () => {
           onScan={handleQRScan}
           onError={(error) => {
             console.error('QR scan error:', error);
-            toast.error(`QR code scan error: ${error}. Please ensure the QR code is clear and try again.`);
+            toast.error(`QR code scan error: ${error}. Please ensure the QR code is clear and try again.`, {
+              title: 'Scan Error'
+            });
           }}
           onClose={() => setScannerOpen(false)}
         />
+      )}
+
+      {/* Manual Check-in Modal */}
+      {showManualCheckInModal && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-[100] flex items-center justify-center p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !manualCheckInSubmitting) {
+              setShowManualCheckInModal(false);
+            }
+          }}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-4 sm:p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900 flex items-center">
+                  <User className="mr-2 text-blue-600" size={20} />
+                  Manual Check-in
+                </h2>
+                <button
+                  onClick={() => !manualCheckInSubmitting && setShowManualCheckInModal(false)}
+                  disabled={manualCheckInSubmitting}
+                  className="text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <XCircle size={20} />
+                </button>
+              </div>
+            </div>
+
+            <form onSubmit={handleManualCheckInSubmit} className="p-4 sm:p-6 space-y-4">
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Email Address <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="email"
+                  id="email"
+                  required
+                  value={manualCheckInData.email}
+                  onChange={(e) => setManualCheckInData({ ...manualCheckInData, email: e.target.value })}
+                  disabled={manualCheckInSubmitting}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  placeholder="user@example.com"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1.5">
+                    First Name
+                  </label>
+                  <input
+                    type="text"
+                    id="firstName"
+                    value={manualCheckInData.firstName}
+                    onChange={(e) => setManualCheckInData({ ...manualCheckInData, firstName: e.target.value })}
+                    disabled={manualCheckInSubmitting}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    placeholder="John"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Last Name
+                  </label>
+                  <input
+                    type="text"
+                    id="lastName"
+                    value={manualCheckInData.lastName}
+                    onChange={(e) => setManualCheckInData({ ...manualCheckInData, lastName: e.target.value })}
+                    disabled={manualCheckInSubmitting}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    placeholder="Doe"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Phone Number
+                </label>
+                <input
+                  type="tel"
+                  id="phone"
+                  value={manualCheckInData.phone}
+                  onChange={(e) => setManualCheckInData({ ...manualCheckInData, phone: e.target.value })}
+                  disabled={manualCheckInSubmitting}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  placeholder="+1 (555) 123-4567"
+                />
+              </div>
+
+              <div className="pt-4 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowManualCheckInModal(false)}
+                  disabled={manualCheckInSubmitting}
+                  className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={manualCheckInSubmitting || !manualCheckInData.email.trim()}
+                  className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 active:bg-blue-800 font-medium transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-sm flex items-center justify-center"
+                >
+                  {manualCheckInSubmitting ? (
+                    <>
+                      <Loader2 size={16} className="mr-2 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle size={16} className="mr-2" />
+                      Check In
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );

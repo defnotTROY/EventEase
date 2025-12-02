@@ -348,6 +348,25 @@ export const eventsService = {
         throw new Error('User ID mismatch');
       }
 
+      // Check event status - prevent registration for completed or cancelled events
+      const { data: event, error: eventError } = await supabase
+        .from('events')
+        .select('id, status, title')
+        .eq('id', eventId)
+        .single();
+      
+      if (eventError || !event) {
+        throw new Error('Event not found');
+      }
+      
+      if (event.status === 'completed') {
+        throw new Error('Registration is closed. This event has already been completed.');
+      }
+      
+      if (event.status === 'cancelled') {
+        throw new Error('Registration is closed. This event has been cancelled.');
+      }
+      
       // Check for scheduling conflicts (same date and time)
       const conflictCheck = await conflictDetectionService.checkForConflict(user.id, eventId);
       
@@ -385,14 +404,15 @@ export const eventsService = {
 
       // Create notification for the user
       try {
-        const { data: event } = await supabase
+        // Fetch full event details for notification (we already have basic event data above)
+        const { data: eventDetails } = await supabase
           .from('events')
           .select('id, title, date, time, location')
           .eq('id', eventId)
           .single();
         
-        if (event) {
-          await notificationService.createRegistrationNotification(participantData.userId, event);
+        if (eventDetails) {
+          await notificationService.createRegistrationNotification(participantData.userId, eventDetails);
         }
       } catch (notifError) {
         console.warn('Could not create registration notification:', notifError);
